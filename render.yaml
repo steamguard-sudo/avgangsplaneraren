@@ -32,7 +32,7 @@ services:
     envVars:
       - key: GOOGLE_API_KEY
         sync: false # fylls i manuellt i Render Dashboard, hamnar aldrig i Git
-      -key: NODEVERSION
+      -key: NODE_VERSION
       value: "22"
   
       - key: NODE_ENV
