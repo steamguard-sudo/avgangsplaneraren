@@ -11,8 +11,15 @@ services:
     autoDeploy: true
     envVars:
       - key: GOOGLE_API_KEY
+<<<<<<< HEAD
         sync: false
       - key: NODE_VERSION
         value: "22"
+=======
+        sync: false # fylls i manuellt i Render Dashboard, hamnar aldrig i Git
+      -key: NODE_VERSION
+      value: "22"
+  
+>>>>>>> ad585984baccd152f5196bfcd408f601d348a164
       - key: NODE_ENV
         value: production
