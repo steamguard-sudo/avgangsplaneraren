@@ -1,0 +1,42 @@
+# render.yaml — Render "Blueprint"-fil.
+#
+# Så här använder ni den:
+#   1. Pusha hela det här projektet (inte bara backend/) till ett Git-repo
+#      (GitHub/GitLab) — render.yaml måste ligga i repots rot.
+#   2. I Render Dashboard: New → Blueprint → peka på repot.
+#   3. Render läser den här filen, skapar tjänsten automatiskt, och ber er
+#      fylla i GOOGLE_API_KEY (markerad `sync: false` nedan, dvs. hemlig —
+#      den sparas bara i Render, aldrig i det här repot).
+#   4. Efter deploy får ni en URL i stil med
+#      https://avgangsplaneraren-backend.onrender.com — sätt den som
+#      AppConfig.BACKEND_BASE_URL i appen (se README).
+#
+# OBS om disk/cache: `disk:`-blocket nedan kräver en betald plan (Starter
+# eller högre) — Render Free stödjer inte beständiga diskar. Om ni kör på
+# Free, ta bort `disk:`-blocket och miljövariabeln CACHE_DB_PATH; SQLite-
+# filen skapas då på den tillfälliga (ephemeral) disken istället, vilket
+# innebär att cachen kan nollställas vid omstart/ny driftsättning — se
+# kommentaren högst upp i backend/cache.js för vad det betyder i praktiken.
+
+services:
+  - type: web
+    name: avgangsplaneraren-backend
+    runtime: node
+    region: frankfurt # närmast Sverige av Renders regioner
+    plan: starter # byt till "free" för att testa gratis (se OBS ovan om disk)
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: GOOGLE_API_KEY
+        sync: false # fylls i manuellt i Render Dashboard, hamnar aldrig i Git
+      - key: CACHE_DB_PATH
+        value: /var/data/cache.db # pekar in i den beständiga disken nedan
+      - key: NODE_ENV
+        value: production
+    disk:
+      name: avgangsplaneraren-cache
+      mountPath: /var/data
+      sizeGB: 1

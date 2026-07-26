@@ -1,0 +1,38 @@
+[
+  {
+    "id": "exempel-1",
+    "namn": "EXEMPEL — Rastplats Sjöglimten (ej riktig Trafikverket-data)",
+    "latitud": 57.85,
+    "longitud": 14.30,
+    "vagnummer": "E4",
+    "harBord": true,
+    "harBank": true,
+    "harToalett": true,
+    "harSoptunna": true,
+    "handikappanpassad": false
+  },
+  {
+    "id": "exempel-2",
+    "namn": "EXEMPEL — Rastplats Björkhaga (ej riktig Trafikverket-data)",
+    "latitud": 58.10,
+    "longitud": 14.60,
+    "vagnummer": "E4",
+    "harBord": true,
+    "harBank": true,
+    "harToalett": false,
+    "harSoptunna": true,
+    "handikappanpassad": false
+  },
+  {
+    "id": "exempel-3",
+    "namn": "EXEMPEL — Rastplats Granliden (ej riktig Trafikverket-data)",
+    "latitud": 58.45,
+    "longitud": 15.10,
+    "vagnummer": "Rv50",
+    "harBord": false,
+    "harBank": true,
+    "harToalett": false,
+    "harSoptunna": false,
+    "handikappanpassad": false
+  }
+]

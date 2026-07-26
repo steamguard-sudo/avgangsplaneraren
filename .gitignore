@@ -1,0 +1,27 @@
+# Android / Gradle
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+app/build/
+gradlew
+gradlew.bat
+gradle/wrapper/gradle-wrapper.jar
+
+# Backend
+backend/node_modules/
+backend/.env
+backend/data/
+backend/*.db
+backend/*.db-journal
+backend/*.db-wal
+backend/*.db-shm
+
+# Python-verktyg
+tools/__pycache__/
+*.pyc
