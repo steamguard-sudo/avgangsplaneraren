@@ -23,7 +23,7 @@ services:
     name: avgangsplaneraren-backend
     runtime: node
     region: frankfurt # närmast Sverige av Renders regioner
-    plan: starter # byt till "free" för att testa gratis (se OBS ovan om disk)
+    plan: free # byt till "free" för att testa gratis (se OBS ovan om disk)
     rootDir: backend
     buildCommand: npm install
     startCommand: npm start
@@ -32,11 +32,7 @@ services:
     envVars:
       - key: GOOGLE_API_KEY
         sync: false # fylls i manuellt i Render Dashboard, hamnar aldrig i Git
-      - key: CACHE_DB_PATH
-        value: /var/data/cache.db # pekar in i den beständiga disken nedan
+      
       - key: NODE_ENV
         value: production
-    disk:
-      name: avgangsplaneraren-cache
-      mountPath: /var/data
-      sizeGB: 1
+   
