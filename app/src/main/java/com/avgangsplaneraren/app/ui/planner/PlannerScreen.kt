@@ -10,13 +10,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.avgangsplaneraren.app.data.directions.AppConfig
+import com.avgangsplaneraren.app.data.directions.GooglePlacesRepository
 import com.avgangsplaneraren.app.data.directions.GoogleRoutesRepository
 import com.avgangsplaneraren.app.data.directions.RouteEstimator
-import com.avgangsplaneraren.app.data.directions.SampleCities
 import com.avgangsplaneraren.app.data.trafikverket.TrafikverketDataSeeder
 import com.avgangsplaneraren.app.data.trafikverket.TrafikverketDatabase
 import com.avgangsplaneraren.app.data.trafikverket.TrafikverketRestStopRepository
 import com.avgangsplaneraren.app.domain.CalculateDeparture
+import com.avgangsplaneraren.app.domain.Coordinates
 import com.avgangsplaneraren.app.domain.DepartureResult
 import com.avgangsplaneraren.app.domain.TripInput
 import com.avgangsplaneraren.app.ui.board.DepartureBoard
@@ -29,7 +30,12 @@ import java.time.LocalDateTime
  * ni bygger vidare med riktig arkitektur (MVVM + Hilt) när ni fyller på
  * med fler skärmar.
  *
- * Ruttdata hämtas nu via [GoogleRoutesRepository], som anropar ert eget
+ * Avreseplats/mål väljs nu via fritextsökning ([PlaceAutocompleteField],
+ * mot Googles Places API via backend) istället för en hårdkodad lista med
+ * åtta exempelstäder — vilken plats eller adress som helst i Sverige (eller
+ * utanför) går att söka fram.
+ *
+ * Ruttdata hämtas via [GoogleRoutesRepository], som anropar ert eget
  * backend (backend/server.js) — vilket i sin tur anropar Google Routes API
  * och cachar svaret. Om anropet misslyckas (backend inte igång, ingen
  * nätanslutning) faller det automatiskt tillbaka på [RouteEstimator], så
@@ -40,9 +46,11 @@ fun PlannerScreen() {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    val cityNames = remember { SampleCities.all.keys.toList() }
-    var from by remember { mutableStateOf(cityNames.first()) }
-    var to by remember { mutableStateOf(cityNames[1]) }
+    var fromName by remember { mutableStateOf<String?>(null) }
+    var fromCoord by remember { mutableStateOf<Coordinates?>(null) }
+    var toName by remember { mutableStateOf<String?>(null) }
+    var toCoord by remember { mutableStateOf<Coordinates?>(null) }
+
     var bufferMinutes by remember { mutableStateOf(10) }
     var onlyAmenities by remember { mutableStateOf(false) }
     var arrival by remember { mutableStateOf(LocalDateTime.now().plusHours(6)) }
@@ -51,6 +59,7 @@ fun PlannerScreen() {
     var isCalculating by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
+    val placeProvider = remember { GooglePlacesRepository(baseUrl = AppConfig.BACKEND_BASE_URL) }
     val routeProvider = remember {
         GoogleRoutesRepository(baseUrl = AppConfig.BACKEND_BASE_URL, fallback = RouteEstimator())
     }
@@ -63,6 +72,8 @@ fun PlannerScreen() {
         TrafikverketDataSeeder.seedIfNeeded(context, database.restAreaDao())
         isSeeding = false
     }
+
+    val canCalculate = fromCoord != null && toCoord != null && !isSeeding && !isCalculating
 
     Column(
         modifier = Modifier
@@ -77,8 +88,23 @@ fun PlannerScreen() {
             style = MaterialTheme.typography.bodyMedium
         )
 
-        CityDropdown(label = "Avreseplats", selected = from, options = cityNames) { from = it }
-        CityDropdown(label = "Slutmål", selected = to, options = cityNames) { to = it }
+        PlaceAutocompleteField(
+            label = "Avreseplats",
+            placeProvider = placeProvider,
+            onPlaceSelected = { name, coordinates ->
+                fromName = name
+                fromCoord = coordinates
+            }
+        )
+
+        PlaceAutocompleteField(
+            label = "Slutmål",
+            placeProvider = placeProvider,
+            onPlaceSelected = { name, coordinates ->
+                toName = name
+                toCoord = coordinates
+            }
+        )
 
         ArrivalDateTimePicker(value = arrival, onValueChange = { arrival = it })
 
@@ -95,19 +121,19 @@ fun PlannerScreen() {
         }
 
         Button(
-            enabled = !isSeeding && !isCalculating,
+            enabled = canCalculate,
             onClick = {
+                val from = fromCoord ?: return@Button
+                val to = toCoord ?: return@Button
                 errorMessage = null
                 isCalculating = true
                 coroutineScope.launch {
                     try {
-                        val fromCoord = SampleCities.all.getValue(from)
-                        val toCoord = SampleCities.all.getValue(to)
-                        val route = routeProvider.getRoute(fromCoord, toCoord)
+                        val route = routeProvider.getRoute(from, to)
 
                         val trip = TripInput(
-                            fromPlace = from,
-                            toPlace = to,
+                            fromPlace = fromName.orEmpty(),
+                            toPlace = toName.orEmpty(),
                             desiredArrival = arrival,
                             bufferMinutes = bufferMinutes,
                             onlyStopsWithTableAndBench = onlyAmenities
@@ -126,6 +152,7 @@ fun PlannerScreen() {
                 when {
                     isSeeding -> "Laddar rastplatsdata …"
                     isCalculating -> "Beräknar …"
+                    fromCoord == null || toCoord == null -> "Välj avresa och mål"
                     else -> "Beräkna avgångstid"
                 }
             )
@@ -136,38 +163,5 @@ fun PlannerScreen() {
         }
 
         result?.let { DepartureBoard(it) }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun CityDropdown(
-    label: String,
-    selected: String,
-    options: List<String>,
-    onSelected: (String) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
-        OutlinedTextField(
-            value = selected,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text(label) },
-            modifier = Modifier
-                .menuAnchor()
-                .fillMaxWidth()
-        )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            options.forEach { option ->
-                DropdownMenuItem(
-                    text = { Text(option) },
-                    onClick = {
-                        onSelected(option)
-                        expanded = false
-                    }
-                )
-            }
-        }
     }
 }

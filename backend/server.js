@@ -34,6 +34,7 @@ if (!GOOGLE_API_KEY) {
 }
 
 const CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 dagar — vägar ändras sällan
+const PLACES_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 90; // 90 dagar — adresser/orter ändras nästan aldrig
 
 /** Avrundar koordinater till ~1 km precision, så närliggande förfrågningar delar cache-post. */
 function roundCoord(value) {
@@ -69,6 +70,113 @@ app.get("/route", async (req, res) => {
     res.status(502).json({ error: "Kunde inte hämta rutt från Google" });
   }
 });
+
+/**
+ * Fritextsökning av platser/adresser i Sverige, för autokompletteringsfälten
+ * i appen. Cachas per sökterm — samma bokstäver någon skriver ("jönk...")
+ * behöver bara slås upp mot Google en gång totalt, sen återanvänds den för
+ * alla användare som skriver samma sak.
+ */
+app.get("/places/autocomplete", async (req, res) => {
+  const query = (req.query.query || "").toString().trim();
+  if (!query) {
+    return res.json({ suggestions: [] });
+  }
+
+  const key = `places:autocomplete:${query.toLowerCase()}`;
+  const cached = cache.get(key, PLACES_CACHE_TTL_MS);
+  if (cached) {
+    return res.json(cached);
+  }
+
+  try {
+    const result = await fetchAutocompleteFromGoogle(query);
+    cache.set(key, result);
+    res.json(result);
+  } catch (err) {
+    console.error("Fel vid anrop mot Google Places Autocomplete:", err.message);
+    res.status(502).json({ error: "Kunde inte söka platser just nu" });
+  }
+});
+
+/** Slår upp koordinaten för ett tidigare valt förslag (placeId från autocomplete ovan). */
+app.get("/places/details", async (req, res) => {
+  const placeId = (req.query.placeId || "").toString().trim();
+  if (!placeId) {
+    return res.status(400).json({ error: "placeId krävs" });
+  }
+
+  const key = `places:details:${placeId}`;
+  const cached = cache.get(key, PLACES_CACHE_TTL_MS);
+  if (cached) {
+    return res.json(cached);
+  }
+
+  try {
+    const result = await fetchPlaceDetailsFromGoogle(placeId);
+    cache.set(key, result);
+    res.json(result);
+  } catch (err) {
+    console.error("Fel vid anrop mot Google Place Details:", err.message);
+    res.status(502).json({ error: "Kunde inte hämta platsinformation" });
+  }
+});
+
+async function fetchAutocompleteFromGoogle(query) {
+  // Places API (New) — Autocomplete. Kräver att "Places API (New)" är
+  // aktiverat i samma Google Cloud-projekt som Routes API.
+  // https://developers.google.com/maps/documentation/places/web-service/place-autocomplete
+  const response = await fetch("https://places.googleapis.com/v1/places:autocomplete", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Goog-Api-Key": GOOGLE_API_KEY,
+    },
+    body: JSON.stringify({
+      input: query,
+      includedRegionCodes: ["se"],
+      languageCode: "sv",
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Google svarade ${response.status}: ${await response.text()}`);
+  }
+
+  const json = await response.json();
+  const suggestions = (json.suggestions || [])
+    .map((s) => s.placePrediction)
+    .filter(Boolean)
+    .map((p) => ({
+      placeId: p.placeId,
+      description: p.text?.text || "",
+    }));
+
+  return { suggestions };
+}
+
+async function fetchPlaceDetailsFromGoogle(placeId) {
+  // Places API (New) — Place Details, bara fälten vi faktiskt behöver.
+  // https://developers.google.com/maps/documentation/places/web-service/place-details
+  const response = await fetch(`https://places.googleapis.com/v1/places/${placeId}`, {
+    method: "GET",
+    headers: {
+      "X-Goog-Api-Key": GOOGLE_API_KEY,
+      "X-Goog-FieldMask": "location",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Google svarade ${response.status}: ${await response.text()}`);
+  }
+
+  const json = await response.json();
+  if (!json.location) {
+    throw new Error("Google returnerade ingen plats för det ID:t");
+  }
+
+  return { lat: json.location.latitude, lon: json.location.longitude };
+}
 
 async function fetchRouteFromGoogle(fromLat, fromLon, toLat, toLon) {
   // Routes API (efterträdaren till Directions API) — se
