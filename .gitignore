@@ -25,3 +25,7 @@ backend/*.db-shm
 # Python-verktyg
 tools/__pycache__/
 *.pyc
+
+# Rådata från Trafikverket (stora filer, ska aldrig committas)
+raw-data/
+*.gpkg
