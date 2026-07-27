@@ -50,17 +50,26 @@ import struct
 import sys
 import argparse
 
-# Justera höger sida efter vad `inspect` visar för er fil.
+# Justerat mot Trafikverkets verkliga export (lager VIS_DK_O_101_Rastplatser).
 # Sätt till None för fält som saknas i er export — då blir värdet False/null.
 FIELD_MAP = {
-    "namn": "NAMN",
-    "vagnummer": "VAGNUMMER",
-    "bord": "BORD",  # t.ex. 1/0, "Ja"/"Nej", eller True/False beroende på export
-    "bank": "BANK",
-    "toalett": "TOALETT",
-    "soptunna": "SOPTUNNA",
-    "handikappanpassad": "HANDIKAPPANPASSAD",
+    "namn": "Rastplatsnamn",
+    "vagnummer": None,  # ingen vägnummer-kolumn i denna dataprodukt
+    "bord": "Totalt_antal_bord_med_sittplatser",
+    "bank": "Totalt_antal_bord_med_sittplatser",  # samma fält — "bord med sittplatser" inkluderar bänkar
+    "toalett": "Totalt_antal_toaletter",
+    "soptunna": None,  # ingen soptunna-kolumn i denna dataprodukt
+    "handikappanpassad": None,  # hanteras separat nedan, se HANDIKAPP_KOLUMNER
 }
+
+# Rastplatsdatan har tre separata handikappanpassnings-mått istället för
+# ett enda ja/nej-fält. Vi räknar platsen som handikappanpassad om NÅGON
+# av dessa är > 0.
+HANDIKAPP_KOLUMNER = [
+    "Antal_hcp_anpassade_bord",
+    "Antal_hcp_anpassade_toalett",
+    "Antal_hcp_anpassade_parkeringsplatser_for_personbil",
+]
 
 
 def truthy(value) -> bool:
@@ -248,7 +257,17 @@ def convert(input_path: str, output_path: str, layer: str | None = None) -> None
                 col = FIELD_MAP.get(key)
                 return row_dict.get(col) if col else None
 
-            feature_id = row_dict.get("OBJECTID") or row_dict.get("fid") or i
+            handikappanpassad = any(
+                truthy(row_dict.get(col)) for col in HANDIKAPP_KOLUMNER if col in row_dict
+            )
+
+            feature_id = (
+                row_dict.get("ELEMENT_ID")
+                or row_dict.get("OBJECTID")
+                or row_dict.get("fid")
+                or row_dict.get("id")
+                or i
+            )
 
             result.append({
                 "id": str(feature_id),
@@ -260,7 +279,7 @@ def convert(input_path: str, output_path: str, layer: str | None = None) -> None
                 "harBank": truthy(field("bank")),
                 "harToalett": truthy(field("toalett")),
                 "harSoptunna": truthy(field("soptunna")),
-                "handikappanpassad": truthy(field("handikappanpassad")),
+                "handikappanpassad": handikappanpassad,
             })
     finally:
         con.close()
