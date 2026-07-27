@@ -10,5 +10,5 @@ package com.avgangsplaneraren.app.data.directions
  * per byggvariant, inte hårdkodat här).
  */
 object AppConfig {
-    const val BACKEND_BASE_URL = "http://10.0.2.2:3000/"
+    const val BACKEND_BASE_URL = "https://avgangsplaneraren-backend.onrender.com/"
 }
