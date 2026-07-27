@@ -12,25 +12,34 @@ varierar mellan dataproduktversioner och kan ha ändrats sedan det här
 skrevs. Kör alltid steg 1 nedan först och stäm av `FIELD_MAP` mot det som
 faktiskt finns i filen, annars blir bord/bänk/toalett-fälten fel eller tomma.
 
+En GeoPackage-fil (.gpkg) kan innehålla FLERA LAGER (t.ex. om ni beställt
+en stor export med flera dataprodukter i samma fil — vanligt vid en
+"hela Sverige"-beställning). Kör alltid `layers`-kommandot först för att
+se vilka lager som finns, och peka ut rätt lager med --layer om det behövs.
+
 Beroenden:
-    pip install geopandas fiona
+    pip install geopandas pyogrio
 
 Steg:
-    1) Inspektera vilka kolumner filen faktiskt har:
-         python convert_rastplatser.py inspect rastplats.gpkg
+    1) Se vilka LAGER filen innehåller (viktigt för stora/kombinerade beställningar):
+         python convert_rastplatser.py layers rastplats.gpkg
 
-    2) Justera FIELD_MAP nedan så den matchar (vänster = appens fältnamn,
+    2) Inspektera kolumnerna i rätt lager:
+         python convert_rastplatser.py inspect rastplats.gpkg --layer Rastplats
+
+    3) Justera FIELD_MAP nedan så den matchar (vänster = appens fältnamn,
        höger = kolumnnamnet i er faktiska fil).
 
-    3) Konvertera:
-         python convert_rastplatser.py convert rastplats.gpkg rastplatser.json
+    4) Konvertera:
+         python convert_rastplatser.py convert rastplats.gpkg rastplatser.json --layer Rastplats
 
-    4) Kopiera resultatet till:
+    5) Kopiera resultatet till:
          app/src/main/assets/rastplatser.json
 """
 
 import json
 import sys
+import argparse
 
 # Justera höger sida efter vad `inspect` visar för er fil.
 # Sätt till None för fält som saknas i er export — då blir värdet False/null.
@@ -57,10 +66,25 @@ def truthy(value) -> bool:
     return text in {"ja", "yes", "true", "1", "x"}
 
 
-def inspect(path: str) -> None:
+def list_layers(path: str) -> None:
+    import pyogrio
+
+    layers = pyogrio.list_layers(path)
+    # pyogrio returnerar en array av [namn, geometrityp] per lager
+    print(f"Filen innehåller {len(layers)} lager:")
+    for name, geom_type in layers:
+        print(f"  - {name}  ({geom_type})")
+    print()
+    print("Leta efter ett namn som innehåller 'rast' eller liknande (t.ex. 'Rastplats',")
+    print("'NVDB_DKRastplats', 'DK_Rastplats' — namnet kan variera). Kör sedan:")
+    print(f"  python {sys.argv[0]} inspect {path} --layer <lagernamn>")
+
+
+def inspect(path: str, layer: str | None = None) -> None:
     import geopandas as gpd
 
-    gdf = gpd.read_file(path)
+    gdf = gpd.read_file(path, layer=layer, engine="pyogrio")
+    print(f"Lager: {layer or '(första/enda lagret)'}")
     print(f"Antal rader: {len(gdf)}")
     print("Kolumner i filen:")
     for col in gdf.columns:
@@ -68,16 +92,23 @@ def inspect(path: str) -> None:
         print(f"  - {col}  (exempel: {sample!r})")
 
 
-def convert(input_path: str, output_path: str) -> None:
+def convert(input_path: str, output_path: str, layer: str | None = None) -> None:
     import geopandas as gpd
 
-    gdf = gpd.read_file(input_path)
+    gdf = gpd.read_file(input_path, layer=layer, engine="pyogrio")
 
-    # Rastplatser lagras normalt som punkter. Om filen istället har
-    # linje-/ytgeometri (t.ex. hela anläggningsområdet), räkna ut en
-    # representativ punkt.
-    gdf["_lat"] = gdf.geometry.centroid.y
-    gdf["_lon"] = gdf.geometry.centroid.x
+    # Rastplatser lagras normalt som punkter — då är lat/lon exakta.
+    # Om geometrin istället är en linje/yta (t.ex. hela anläggningsområdet),
+    # projicera till SWEREF99 TM (Sveriges standardprojektion, meter-baserad)
+    # innan centroid beräknas, annars blir en gradbaserad centroid missvisande.
+    if (gdf.geometry.geom_type == "Point").all():
+        gdf["_lat"] = gdf.geometry.y
+        gdf["_lon"] = gdf.geometry.x
+    else:
+        projected = gdf.geometry.to_crs(epsg=3006).centroid
+        centroid_wgs84 = projected.to_crs(epsg=4326)
+        gdf["_lat"] = centroid_wgs84.y
+        gdf["_lon"] = centroid_wgs84.x
 
     result = []
     for i, row in gdf.iterrows():
@@ -105,18 +136,26 @@ def convert(input_path: str, output_path: str) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print(__doc__)
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    subparsers = parser.add_subparsers(dest="command", required=True)
 
-    command, path = sys.argv[1], sys.argv[2]
-    if command == "inspect":
-        inspect(path)
-    elif command == "convert":
-        if len(sys.argv) < 4:
-            print("Ange output-fil: convert_rastplatser.py convert <in.gpkg> <out.json>")
-            sys.exit(1)
-        convert(path, sys.argv[3])
-    else:
-        print(f"Okänt kommando: {command}")
-        sys.exit(1)
+    p_layers = subparsers.add_parser("layers", help="Lista alla lager i filen")
+    p_layers.add_argument("path", help="Sökväg till .gpkg-filen")
+
+    p_inspect = subparsers.add_parser("inspect", help="Visa kolumnerna i ett lager")
+    p_inspect.add_argument("path", help="Sökväg till .gpkg-filen")
+    p_inspect.add_argument("--layer", default=None, help="Lagernamn (se 'layers'-kommandot)")
+
+    p_convert = subparsers.add_parser("convert", help="Konvertera till appens JSON-format")
+    p_convert.add_argument("input", help="Sökväg till .gpkg-filen")
+    p_convert.add_argument("output", help="Sökväg till JSON-filen som ska skapas")
+    p_convert.add_argument("--layer", default=None, help="Lagernamn (se 'layers'-kommandot)")
+
+    args = parser.parse_args()
+
+    if args.command == "layers":
+        list_layers(args.path)
+    elif args.command == "inspect":
+        inspect(args.path, layer=args.layer)
+    elif args.command == "convert":
+        convert(args.input, args.output, layer=args.layer)
