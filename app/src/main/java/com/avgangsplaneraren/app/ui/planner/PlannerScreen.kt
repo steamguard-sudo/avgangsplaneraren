@@ -21,6 +21,8 @@ import com.avgangsplaneraren.app.domain.CalculateDeparture
 import com.avgangsplaneraren.app.domain.Coordinates
 import com.avgangsplaneraren.app.domain.DepartureResult
 import com.avgangsplaneraren.app.domain.OvernightSpot
+import com.avgangsplaneraren.app.domain.OvernightSpotProvider
+import com.avgangsplaneraren.app.domain.RouteInfo
 import com.avgangsplaneraren.app.domain.TripInput
 import com.avgangsplaneraren.app.ui.board.DepartureBoard
 import com.avgangsplaneraren.app.ui.board.OvernightSpotsSection
@@ -39,7 +41,7 @@ import java.time.LocalDateTime
  * anropet misslyckas). Rastplatser kommer från Trafikverket
  * ([TrafikverketRestStopRepository]), och — om användaren bockar i det —
  * övernattningsförslag från OpenStreetMap ([OverpassOvernightRepository]),
- * hämtade runt ruttens ungefärliga mittpunkt.
+ * hämtade på tre punkter utspridda längs rutten (se [findOvernightSpotsAlongRoute]).
  */
 @Composable
 fun PlannerScreen() {
@@ -150,15 +152,7 @@ fun PlannerScreen() {
                         result = calculator.calculate(trip, route)
 
                         if (showOvernightSpots) {
-                            // Söker runt ruttens ungefärliga mittpunkt — enkel
-                            // heuristik, "bäst plats att bryta en lång resa på".
-                            val midpoint = route.polyline.getOrNull(route.polyline.size / 2)
-                            if (midpoint != null) {
-                                overnightSpots = overnightProvider.candidatesNear(
-                                    point = midpoint,
-                                    distanceFromStartKm = route.distanceKm / 2
-                                )
-                            }
+                            overnightSpots = findOvernightSpotsAlongRoute(overnightProvider, route)
                         }
                     } catch (e: Exception) {
                         errorMessage = "Kunde inte beräkna resan: ${e.message}"
@@ -188,5 +182,38 @@ fun PlannerScreen() {
         if (showOvernightSpots) {
             OvernightSpotsSection(overnightSpots)
         }
+    }
+}
+
+/**
+ * Söker efter övernattningsplatser på tre punkter utspridda längs rutten
+ * (25 %, 50 %, 75 % av vägen) istället för bara mittpunkten — en enda punkt
+ * missar lätt allt om den råkar hamna i ett glesbefolkat område, särskilt
+ * på längre resor genom t.ex. Bergslagen eller andra skogsrika sträckor.
+ * Resultaten slås ihop och dubbletter (samma namn + nästan samma
+ * koordinat, t.ex. om två sökcirklar överlappar) filtreras bort.
+ */
+private suspend fun findOvernightSpotsAlongRoute(
+    provider: OvernightSpotProvider,
+    route: RouteInfo
+): List<OvernightSpot> {
+    val line = route.polyline
+    if (line.isEmpty()) return emptyList()
+
+    val fractions = listOf(0.25, 0.5, 0.75)
+    val allSpots = mutableListOf<OvernightSpot>()
+
+    for (fraction in fractions) {
+        val index = (fraction * (line.size - 1)).toInt().coerceIn(0, line.size - 1)
+        val point = line[index]
+        val distanceFromStartKm = (route.distanceKm * fraction).toInt()
+        allSpots += provider.candidatesNear(point = point, distanceFromStartKm = distanceFromStartKm)
+    }
+
+    // Enkel dubblettfiltrering: samma namn inom ~0.01° (ca 1 km) räknas som samma plats.
+    val seen = mutableSetOf<String>()
+    return allSpots.filter { spot ->
+        val key = "${spot.name}:${(spot.latitude * 100).toInt()}:${(spot.longitude * 100).toInt()}"
+        seen.add(key)
     }
 }

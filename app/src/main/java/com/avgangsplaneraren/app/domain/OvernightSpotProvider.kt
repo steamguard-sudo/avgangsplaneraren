@@ -14,6 +14,6 @@ interface OvernightSpotProvider {
     suspend fun candidatesNear(
         point: Coordinates,
         distanceFromStartKm: Int,
-        radiusKm: Double = 20.0
+        radiusKm: Double = 40.0
     ): List<OvernightSpot>
 }
