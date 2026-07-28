@@ -13,10 +13,18 @@ import com.avgangsplaneraren.app.domain.OvernightSpot
  * tydligt separerat från rastplatserna och märkt med källa — dessa kommer
  * från OpenStreetMap, inte Trafikverket, och kvalitet/täckning kan variera
  * mer eftersom det är community-underhållen data.
+ *
+ * @param searchDone true om en sökning faktiskt kördes (oavsett resultat) —
+ *   används för att skilja på "ingen sökning gjord än" (visa ingenting) och
+ *   "sökning gjord men inget hittades" (visa ett tydligt meddelande, så det
+ *   inte ser ut som ett fel).
+ * @param searchFailed true om minst ett sökanrop misslyckades (t.ex. Overpass
+ *   överbelastad) — skiljer "servern svarade inte" från "inga platser finns
+ *   i området", som annars skulle se identiska ut för användaren.
  */
 @Composable
-fun OvernightSpotsSection(spots: List<OvernightSpot>) {
-    if (spots.isEmpty()) return
+fun OvernightSpotsSection(spots: List<OvernightSpot>, searchDone: Boolean, searchFailed: Boolean = false) {
+    if (!searchDone) return
 
     Column(modifier = Modifier.padding(top = 16.dp)) {
         Text("Övernattningsmöjligheter i närheten", style = MaterialTheme.typography.titleMedium)
@@ -25,6 +33,29 @@ fun OvernightSpotsSection(spots: List<OvernightSpot>) {
             style = MaterialTheme.typography.labelSmall
         )
         Spacer(modifier = Modifier.height(8.dp))
+
+        if (searchFailed) {
+            Text(
+                if (spots.isEmpty()) {
+                    "Kunde inte söka just nu — OpenStreetMaps sökserver verkar vara " +
+                        "överbelastad. Försök igen om en liten stund, det brukar lösa sig."
+                } else {
+                    "Sökningen lyckades bara delvis (servern var överbelastad på vissa " +
+                        "delsträckor) — listan nedan kan vara ofullständig."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        } else if (spots.isEmpty()) {
+            Text(
+                "Inga övernattningsplatser hittades längs den här rutten. " +
+                    "Det betyder oftast att OpenStreetMap saknar kartlagda platser i " +
+                    "området, inte att det inte finns några i verkligheten.",
+                style = MaterialTheme.typography.bodySmall
+            )
+            return
+        }
 
         spots.forEach { spot ->
             Card(

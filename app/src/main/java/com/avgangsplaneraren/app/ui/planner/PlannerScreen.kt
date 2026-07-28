@@ -65,6 +65,8 @@ fun PlannerScreen() {
     var arrival by remember { mutableStateOf(LocalDateTime.now().plusHours(6)) }
     var result by remember { mutableStateOf<DepartureResult?>(null) }
     var overnightSpots by remember { mutableStateOf<List<OvernightSpot>>(emptyList()) }
+    var overnightSearchDone by remember { mutableStateOf(false) }
+    var overnightSearchFailed by remember { mutableStateOf(false) }
     var isSeeding by remember { mutableStateOf(true) }
     var isCalculating by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -187,6 +189,8 @@ fun PlannerScreen() {
                 errorMessage = null
                 isCalculating = true
                 overnightSpots = emptyList()
+                overnightSearchDone = false
+                overnightSearchFailed = false
                 coroutineScope.launch {
                     try {
                         val route = routeProvider.getRoute(from, to)
@@ -212,7 +216,10 @@ fun PlannerScreen() {
                                 if (includeCaravanSites) add(OvernightSpotType.CARAVAN_SITE)
                                 if (includeCampSites) add(OvernightSpotType.CAMP_SITE)
                             }
-                            overnightSpots = findOvernightSpotsAlongRoute(overnightProvider, route, types)
+                            val outcome = findOvernightSpotsAlongRoute(overnightProvider, route, types)
+                            overnightSpots = outcome.spots
+                            overnightSearchFailed = outcome.hadFailure
+                            overnightSearchDone = true
                         }
                     } catch (e: Exception) {
                         errorMessage = "Kunde inte beräkna resan: ${e.message}"
@@ -240,16 +247,33 @@ fun PlannerScreen() {
         result?.let { DepartureBoard(it) }
 
         if (showOvernightSpots) {
-            OvernightSpotsSection(overnightSpots)
+            OvernightSpotsSection(
+                spots = overnightSpots,
+                searchDone = overnightSearchDone,
+                searchFailed = overnightSearchFailed
+            )
         }
     }
 }
 
+/** Resultat av en övernattningssökning: platserna som hittades, och om något sökanrop misslyckades. */
+private data class OvernightSearchOutcome(
+    val spots: List<OvernightSpot>,
+    val hadFailure: Boolean
+)
+
 /**
- * Söker efter övernattningsplatser på tre punkter utspridda längs rutten
- * (25 %, 50 %, 75 % av vägen) istället för bara mittpunkten — en enda punkt
- * missar lätt allt om den råkar hamna i ett glesbefolkat område, särskilt
- * på längre resor genom t.ex. Bergslagen eller andra skogsrika sträckor.
+ * Söker efter övernattningsplatser på flera punkter utspridda längs rutten
+ * istället för bara mittpunkten — en enda punkt missar lätt allt om den
+ * råkar hamna i ett glesbefolkat område, särskilt på längre resor genom
+ * t.ex. Bergslagen eller andra skogsrika sträckor. Antalet sökpunkter
+ * skalas efter reslängden (ungefär en punkt per 150 km, minst 3, max 8)
+ * så att långa resor inte lämnar stora luckor mellan sökpunkterna.
+ *
+ * Om ett sökanrop misslyckas (t.ex. Overpass överbelastad) fångas felet
+ * per punkt — resten av punkterna söks ändå, men [OvernightSearchOutcome.hadFailure]
+ * sätts till true så att UI:t kan visa "kunde inte söka just nu" istället
+ * för att felaktigt se ut som "inga platser finns här".
  *
  * Max [maxPerPoint] platser tas med per delsträcka (annars kan en tät
  * anläggning dominera hela listan) — resultaten slås sedan ihop och
@@ -261,29 +285,36 @@ private suspend fun findOvernightSpotsAlongRoute(
     route: RouteInfo,
     types: Set<OvernightSpotType>,
     maxPerPoint: Int = 4
-): List<OvernightSpot> {
+): OvernightSearchOutcome {
     val line = route.polyline
-    if (line.isEmpty() || types.isEmpty()) return emptyList()
+    if (line.isEmpty() || types.isEmpty()) return OvernightSearchOutcome(emptyList(), hadFailure = false)
 
-    val fractions = listOf(0.25, 0.5, 0.75)
+    val numPoints = (route.distanceKm / 150).coerceIn(3, 8)
+    val fractions = (1..numPoints).map { it.toDouble() / (numPoints + 1) }
     val allSpots = mutableListOf<OvernightSpot>()
+    var hadFailure = false
 
     for (fraction in fractions) {
         val index = (fraction * (line.size - 1)).toInt().coerceIn(0, line.size - 1)
         val point = line[index]
         val distanceFromStartKm = (route.distanceKm * fraction).toInt()
-        val spotsAtPoint = provider.candidatesNear(
-            point = point,
-            distanceFromStartKm = distanceFromStartKm,
-            types = types
-        )
-        allSpots += spotsAtPoint.take(maxPerPoint)
+        try {
+            val spotsAtPoint = provider.candidatesNear(
+                point = point,
+                distanceFromStartKm = distanceFromStartKm,
+                types = types
+            )
+            allSpots += spotsAtPoint.take(maxPerPoint)
+        } catch (e: Exception) {
+            hadFailure = true
+        }
     }
 
     // Enkel dubblettfiltrering: samma namn inom ~0.01° (ca 1 km) räknas som samma plats.
     val seen = mutableSetOf<String>()
-    return allSpots.filter { spot ->
+    val deduped = allSpots.filter { spot ->
         val key = "${spot.name}:${(spot.latitude * 100).toInt()}:${(spot.longitude * 100).toInt()}"
         seen.add(key)
     }
+    return OvernightSearchOutcome(deduped, hadFailure)
 }
