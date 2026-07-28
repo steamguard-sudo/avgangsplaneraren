@@ -20,6 +20,11 @@ import kotlinx.coroutines.launch
  * senaste tryckningen innan den frågar backend, så att en snabb skrivare
  * inte skickar ett anrop per bokstav. När ett förslag väljs slås dess
  * koordinat upp i bakgrunden, och [onPlaceSelected] anropas när den är klar.
+ *
+ * Har en rensa-knapp (✕) när fältet innehåller text, så det är enkelt att
+ * skriva om — t.ex. om man valde fel ort bland flera med samma namn
+ * (Google Places förslagstexten innehåller normalt kommun/län för att
+ * skilja dem åt, men det är ändå smidigt att kunna börja om direkt).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,7 +33,8 @@ fun PlaceAutocompleteField(
     placeProvider: PlaceProvider,
     onPlaceSelected: (name: String, coordinates: Coordinates) -> Unit,
     modifier: Modifier = Modifier,
-    debounceMillis: Long = 350
+    debounceMillis: Long = 350,
+    onCleared: () -> Unit = {}
 ) {
     val coroutineScope = rememberCoroutineScope()
 
@@ -81,8 +87,22 @@ fun PlaceAutocompleteField(
             isError = errorMessage != null,
             supportingText = errorMessage?.let { { Text(it) } },
             trailingIcon = {
-                if (isSearching || isResolving) {
-                    CircularProgressIndicator(modifier = Modifier.width(16.dp), strokeWidth = 2.dp)
+                when {
+                    isSearching || isResolving -> {
+                        CircularProgressIndicator(modifier = Modifier.width(16.dp), strokeWidth = 2.dp)
+                    }
+                    text.isNotEmpty() -> {
+                        IconButton(onClick = {
+                            text = ""
+                            suggestions = emptyList()
+                            expanded = false
+                            hasSelectedPlace = false
+                            errorMessage = null
+                            onCleared()
+                        }) {
+                            Text("✕", style = MaterialTheme.typography.titleMedium)
+                        }
+                    }
                 }
             },
             modifier = modifier

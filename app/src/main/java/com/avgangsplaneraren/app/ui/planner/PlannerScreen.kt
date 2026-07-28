@@ -105,6 +105,10 @@ fun PlannerScreen() {
             onPlaceSelected = { name, coordinates ->
                 fromName = name
                 fromCoord = coordinates
+            },
+            onCleared = {
+                fromName = null
+                fromCoord = null
             }
         )
 
@@ -114,6 +118,10 @@ fun PlannerScreen() {
             onPlaceSelected = { name, coordinates ->
                 toName = name
                 toCoord = coordinates
+            },
+            onCleared = {
+                toName = null
+                toCoord = null
             }
         )
 
@@ -154,26 +162,18 @@ fun PlannerScreen() {
                     Checkbox(checked = includeCampSites, onCheckedChange = { includeCampSites = it })
                     Text("Camping (även tält)", style = MaterialTheme.typography.bodySmall)
                 }
-                Text("Extra tid vid campingstopp", style = MaterialTheme.typography.labelMedium)
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                DurationPicker(
+                    label = "Extra tid vid campingstopp",
+                    hours = campingStopHours,
+                    minutes = campingStopExtraMinutes,
+                    onDurationChange = { h, m ->
+                        campingStopHours = h
+                        campingStopExtraMinutes = m
+                    },
                     modifier = Modifier.fillMaxWidth()
-                ) {
-                    OutlinedTextField(
-                        value = campingStopHours.toString(),
-                        onValueChange = { campingStopHours = it.toIntOrNull() ?: 0 },
-                        label = { Text("Timmar") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    OutlinedTextField(
-                        value = campingStopExtraMinutes.toString(),
-                        onValueChange = { campingStopExtraMinutes = it.toIntOrNull() ?: 0 },
-                        label = { Text("Minuter") },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
+                )
                 Text(
-                    "T.ex. övernattning eller matlagning. 0 om du inte planerar ett stopp där.",
+                    "T.ex. övernattning eller matlagning. Lämna på 0 om du inte planerar ett stopp där.",
                     style = MaterialTheme.typography.labelSmall
                 )
             }
