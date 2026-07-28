@@ -56,7 +56,8 @@ fun PlannerScreen() {
 
     var bufferMinutes by remember { mutableStateOf(10) }
     var minutesPerBreak by remember { mutableStateOf(20) }
-    var campingStopMinutes by remember { mutableStateOf(0) }
+    var campingStopHours by remember { mutableStateOf(0) }
+    var campingStopExtraMinutes by remember { mutableStateOf(0) }
     var onlyAmenities by remember { mutableStateOf(false) }
     var showOvernightSpots by remember { mutableStateOf(false) }
     var includeCaravanSites by remember { mutableStateOf(true) }
@@ -153,12 +154,27 @@ fun PlannerScreen() {
                     Checkbox(checked = includeCampSites, onCheckedChange = { includeCampSites = it })
                     Text("Camping (även tält)", style = MaterialTheme.typography.bodySmall)
                 }
-                OutlinedTextField(
-                    value = campingStopMinutes.toString(),
-                    onValueChange = { campingStopMinutes = it.toIntOrNull() ?: 0 },
-                    label = { Text("Extra tid vid campingstopp (minuter)") },
-                    supportingText = { Text("T.ex. matlagning eller en längre paus. 0 om du inte planerar ett stopp där.") },
+                Text("Extra tid vid campingstopp", style = MaterialTheme.typography.labelMedium)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        value = campingStopHours.toString(),
+                        onValueChange = { campingStopHours = it.toIntOrNull() ?: 0 },
+                        label = { Text("Timmar") },
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        value = campingStopExtraMinutes.toString(),
+                        onValueChange = { campingStopExtraMinutes = it.toIntOrNull() ?: 0 },
+                        label = { Text("Minuter") },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Text(
+                    "T.ex. övernattning eller matlagning. 0 om du inte planerar ett stopp där.",
+                    style = MaterialTheme.typography.labelSmall
                 )
             }
         }
@@ -175,6 +191,11 @@ fun PlannerScreen() {
                     try {
                         val route = routeProvider.getRoute(from, to)
 
+                        val campingStopMinutes = if (showOvernightSpots) {
+                            campingStopHours * 60 + campingStopExtraMinutes
+                        } else {
+                            0
+                        }
                         val trip = TripInput(
                             fromPlace = fromName.orEmpty(),
                             toPlace = toName.orEmpty(),
@@ -182,7 +203,7 @@ fun PlannerScreen() {
                             bufferMinutes = bufferMinutes,
                             onlyStopsWithTableAndBench = onlyAmenities,
                             minutesPerBreak = minutesPerBreak,
-                            campingStopMinutes = if (showOvernightSpots) campingStopMinutes else 0
+                            campingStopMinutes = campingStopMinutes
                         )
                         result = calculator.calculate(trip, route)
 
