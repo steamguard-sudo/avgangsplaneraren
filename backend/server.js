@@ -129,23 +129,37 @@ app.get("/places/details", async (req, res) => {
  * rastplatser, för resenärer som planerar att övernatta på vägen.
  * Data: © OpenStreetMap contributors, ODbL-licens.
  */
+// Enda tillåtna OSM tourism-taggar för den här endpointen — eftersom
+// `types` byggs in direkt i Overpass-frågesträngen nedan, och endpointen
+// är offentlig (vem som helst kan anropa den, inte bara appen), whitelistas
+// värdena här istället för att lita blint på vad som skickas in.
+const ALLOWED_OVERNIGHT_TYPES = new Set(["caravan_site", "camp_site"]);
+
 app.get("/overnight", async (req, res) => {
   const lat = parseFloat(req.query.lat);
   const lon = parseFloat(req.query.lon);
   const radiusKm = parseFloat(req.query.radiusKm) || 20;
+  const types = (req.query.types || "caravan_site,camp_site")
+    .toString()
+    .split(",")
+    .map((t) => t.trim())
+    .filter((t) => ALLOWED_OVERNIGHT_TYPES.has(t));
 
   if (Number.isNaN(lat) || Number.isNaN(lon)) {
     return res.status(400).json({ error: "lat och lon krävs som tal" });
   }
+  if (types.length === 0) {
+    return res.json({ spots: [] });
+  }
 
-  const key = `overnight:${roundCoord(lat)},${roundCoord(lon)}:${radiusKm}`;
+  const key = `overnight:${roundCoord(lat)},${roundCoord(lon)}:${radiusKm}:${[...types].sort().join(",")}`;
   const cached = cache.get(key, OVERNIGHT_CACHE_TTL_MS);
   if (cached) {
     return res.json({ ...cached, cached: true });
   }
 
   try {
-    const result = await fetchOvernightFromOverpass(lat, lon, radiusKm);
+    const result = await fetchOvernightFromOverpass(lat, lon, radiusKm, types);
     cache.set(key, result);
     res.json({ ...result, cached: false });
   } catch (err) {
@@ -222,13 +236,15 @@ async function fetchPlaceDetailsFromGoogle(placeId) {
  * överväg att självhosta en Overpass-instans eller byta till en betald
  * leverantör (t.ex. Geoapify) istället för den delade publika instansen.
  */
-async function fetchOvernightFromOverpass(lat, lon, radiusKm) {
+async function fetchOvernightFromOverpass(lat, lon, radiusKm, types) {
   const radiusMeters = Math.round(radiusKm * 1000);
+  const nodeFilters = types
+    .map((type) => `node["tourism"="${type}"](around:${radiusMeters},${lat},${lon});`)
+    .join("\n      ");
   const query = `
     [out:json][timeout:25];
     (
-      node["tourism"="caravan_site"](around:${radiusMeters},${lat},${lon});
-      node["tourism"="camp_site"](around:${radiusMeters},${lat},${lon});
+      ${nodeFilters}
     );
     out body;
   `;

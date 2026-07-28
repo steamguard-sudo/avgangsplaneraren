@@ -11,7 +11,8 @@ interface BackendOvernightApi {
     suspend fun search(
         @Query("lat") lat: Double,
         @Query("lon") lon: Double,
-        @Query("radiusKm") radiusKm: Double
+        @Query("radiusKm") radiusKm: Double,
+        @Query("types") types: String
     ): OvernightResponse
 }
 
