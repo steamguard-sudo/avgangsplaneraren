@@ -22,6 +22,7 @@ import com.avgangsplaneraren.app.domain.Coordinates
 import com.avgangsplaneraren.app.domain.DepartureResult
 import com.avgangsplaneraren.app.domain.OvernightSpot
 import com.avgangsplaneraren.app.domain.OvernightSpotProvider
+import com.avgangsplaneraren.app.domain.OvernightSpotType
 import com.avgangsplaneraren.app.domain.RouteInfo
 import com.avgangsplaneraren.app.domain.TripInput
 import com.avgangsplaneraren.app.ui.board.DepartureBoard
@@ -54,8 +55,12 @@ fun PlannerScreen() {
     var toCoord by remember { mutableStateOf<Coordinates?>(null) }
 
     var bufferMinutes by remember { mutableStateOf(10) }
+    var minutesPerBreak by remember { mutableStateOf(20) }
+    var campingStopMinutes by remember { mutableStateOf(0) }
     var onlyAmenities by remember { mutableStateOf(false) }
     var showOvernightSpots by remember { mutableStateOf(false) }
+    var includeCaravanSites by remember { mutableStateOf(true) }
+    var includeCampSites by remember { mutableStateOf(true) }
     var arrival by remember { mutableStateOf(LocalDateTime.now().plusHours(6)) }
     var result by remember { mutableStateOf<DepartureResult?>(null) }
     var overnightSpots by remember { mutableStateOf<List<OvernightSpot>>(emptyList()) }
@@ -120,6 +125,14 @@ fun PlannerScreen() {
             modifier = Modifier.fillMaxWidth()
         )
 
+        OutlinedTextField(
+            value = minutesPerBreak.toString(),
+            onValueChange = { minutesPerBreak = it.toIntOrNull() ?: 0 },
+            label = { Text("Rasttid per stopp (minuter)") },
+            supportingText = { Text("Läggs till en gång per rast, ungefär var 2:a körtimme") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
         Row(verticalAlignment = Alignment.CenterVertically) {
             Checkbox(checked = onlyAmenities, onCheckedChange = { onlyAmenities = it })
             Text("Endast rastplatser med bord & bänk")
@@ -128,6 +141,26 @@ fun PlannerScreen() {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Checkbox(checked = showOvernightSpots, onCheckedChange = { showOvernightSpots = it })
             Text("Visa övernattningsmöjligheter (OpenStreetMap)")
+        }
+
+        if (showOvernightSpots) {
+            Column(modifier = Modifier.padding(start = 40.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = includeCaravanSites, onCheckedChange = { includeCaravanSites = it })
+                    Text("Husbil/husvagn", style = MaterialTheme.typography.bodySmall)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = includeCampSites, onCheckedChange = { includeCampSites = it })
+                    Text("Camping (även tält)", style = MaterialTheme.typography.bodySmall)
+                }
+                OutlinedTextField(
+                    value = campingStopMinutes.toString(),
+                    onValueChange = { campingStopMinutes = it.toIntOrNull() ?: 0 },
+                    label = { Text("Extra tid vid campingstopp (minuter)") },
+                    supportingText = { Text("T.ex. matlagning eller en längre paus. 0 om du inte planerar ett stopp där.") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
 
         Button(
@@ -147,12 +180,18 @@ fun PlannerScreen() {
                             toPlace = toName.orEmpty(),
                             desiredArrival = arrival,
                             bufferMinutes = bufferMinutes,
-                            onlyStopsWithTableAndBench = onlyAmenities
+                            onlyStopsWithTableAndBench = onlyAmenities,
+                            minutesPerBreak = minutesPerBreak,
+                            campingStopMinutes = if (showOvernightSpots) campingStopMinutes else 0
                         )
                         result = calculator.calculate(trip, route)
 
                         if (showOvernightSpots) {
-                            overnightSpots = findOvernightSpotsAlongRoute(overnightProvider, route)
+                            val types = buildSet {
+                                if (includeCaravanSites) add(OvernightSpotType.CARAVAN_SITE)
+                                if (includeCampSites) add(OvernightSpotType.CAMP_SITE)
+                            }
+                            overnightSpots = findOvernightSpotsAlongRoute(overnightProvider, route, types)
                         }
                     } catch (e: Exception) {
                         errorMessage = "Kunde inte beräkna resan: ${e.message}"
@@ -190,15 +229,20 @@ fun PlannerScreen() {
  * (25 %, 50 %, 75 % av vägen) istället för bara mittpunkten — en enda punkt
  * missar lätt allt om den råkar hamna i ett glesbefolkat område, särskilt
  * på längre resor genom t.ex. Bergslagen eller andra skogsrika sträckor.
- * Resultaten slås ihop och dubbletter (samma namn + nästan samma
- * koordinat, t.ex. om två sökcirklar överlappar) filtreras bort.
+ *
+ * Max [maxPerPoint] platser tas med per delsträcka (annars kan en tät
+ * anläggning dominera hela listan) — resultaten slås sedan ihop och
+ * dubbletter (samma namn + nästan samma koordinat, t.ex. om två
+ * sökcirklar överlappar) filtreras bort.
  */
 private suspend fun findOvernightSpotsAlongRoute(
     provider: OvernightSpotProvider,
-    route: RouteInfo
+    route: RouteInfo,
+    types: Set<OvernightSpotType>,
+    maxPerPoint: Int = 4
 ): List<OvernightSpot> {
     val line = route.polyline
-    if (line.isEmpty()) return emptyList()
+    if (line.isEmpty() || types.isEmpty()) return emptyList()
 
     val fractions = listOf(0.25, 0.5, 0.75)
     val allSpots = mutableListOf<OvernightSpot>()
@@ -207,7 +251,12 @@ private suspend fun findOvernightSpotsAlongRoute(
         val index = (fraction * (line.size - 1)).toInt().coerceIn(0, line.size - 1)
         val point = line[index]
         val distanceFromStartKm = (route.distanceKm * fraction).toInt()
-        allSpots += provider.candidatesNear(point = point, distanceFromStartKm = distanceFromStartKm)
+        val spotsAtPoint = provider.candidatesNear(
+            point = point,
+            distanceFromStartKm = distanceFromStartKm,
+            types = types
+        )
+        allSpots += spotsAtPoint.take(maxPerPoint)
     }
 
     // Enkel dubblettfiltrering: samma namn inom ~0.01° (ca 1 km) räknas som samma plats.

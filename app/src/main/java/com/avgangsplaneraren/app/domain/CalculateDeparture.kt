@@ -12,14 +12,12 @@ import kotlin.math.roundToInt
  * ingen Retrofit/Room-modell direkt) så att den går att portera rakt av
  * till Swift när iOS-versionen byggs.
  *
- * @param minutesPerBreak hur lång rast som läggs in vid varje stopp.
  * @param breakIntervalMinutes hur ofta (i körtid) en rast läggs in, t.ex. var 2:e timme.
  * @param restStopProvider källa för rastplatsförslag – i skarp version en
  *   `TrafikverketRestStopRepository` (se data/trafikverket) som slår upp
  *   riktiga rastplatser från NVDB nära en given koordinat.
  */
 class CalculateDeparture(
-    private val minutesPerBreak: Int = 20,
     private val breakIntervalMinutes: Int = 120,
     private val restStopProvider: RestStopProvider = RestStopProvider.placeholder()
 ) {
@@ -27,25 +25,29 @@ class CalculateDeparture(
     /**
      * Beräknar avgångstid och rastplatser för en given resa.
      *
-     * @param trip Användarens indata (avresa, mål, önskad ankomsttid, buffert).
+     * @param trip Användarens indata (avresa, mål, önskad ankomsttid, buffert,
+     *   rasttid per stopp, ev. campingstopp).
      * @param route Ruttdata (sträcka, körtid och ev. ruttlinje), hämtat från
      *   t.ex. Google Directions API.
      */
     fun calculate(trip: TripInput, route: RouteInfo): DepartureResult {
         require(route.driveMinutes >= 0) { "Körtid kan inte vara negativ" }
         require(route.distanceKm >= 0) { "Sträcka kan inte vara negativ" }
+        require(trip.minutesPerBreak >= 0) { "Rasttid kan inte vara negativ" }
+        require(trip.campingStopMinutes >= 0) { "Campingstopp kan inte vara negativ" }
 
         val numBreaks = floor(route.driveMinutes / breakIntervalMinutes).toInt().coerceAtLeast(0)
-        val restMinutes = numBreaks * minutesPerBreak
+        val restMinutes = numBreaks * trip.minutesPerBreak
 
-        val totalMinutes = route.driveMinutes + restMinutes + trip.bufferMinutes
+        val totalMinutes = route.driveMinutes + restMinutes + trip.bufferMinutes + trip.campingStopMinutes
         val departureTime = trip.desiredArrival.minusMinutes(totalMinutes.roundToInt().toLong())
 
         val restStops = buildRestStops(
             numBreaks = numBreaks,
             route = route,
             departureTime = departureTime,
-            onlyWithTableAndBench = trip.onlyStopsWithTableAndBench
+            onlyWithTableAndBench = trip.onlyStopsWithTableAndBench,
+            minutesPerBreak = trip.minutesPerBreak
         )
 
         return DepartureResult(
@@ -62,7 +64,8 @@ class CalculateDeparture(
         numBreaks: Int,
         route: RouteInfo,
         departureTime: LocalDateTime,
-        onlyWithTableAndBench: Boolean
+        onlyWithTableAndBench: Boolean,
+        minutesPerBreak: Int
     ): List<RestStop> {
         if (numBreaks == 0) return emptyList()
 

@@ -4,13 +4,22 @@ import java.time.LocalDateTime
 
 /**
  * Indata från användaren i planeringsformuläret.
+ *
+ * @param minutesPerBreak hur lång varje rast ungefär tar, i minuter.
+ *   Användarstyrt istället för hårdkodat, eftersom folk rastar olika länge.
+ * @param campingStopMinutes extra tid för ett planerat camping-/övernattnings-
+ *   stopp under resan (utöver de vanliga korta rasterna), t.ex. om man tänker
+ *   laga mat eller ta en längre paus vid en övernattningsplats. 0 om inget
+ *   sådant stopp planeras.
  */
 data class TripInput(
     val fromPlace: String,
     val toPlace: String,
     val desiredArrival: LocalDateTime,
     val bufferMinutes: Int = 10,
-    val onlyStopsWithTableAndBench: Boolean = false
+    val onlyStopsWithTableAndBench: Boolean = false,
+    val minutesPerBreak: Int = 20,
+    val campingStopMinutes: Int = 0
 )
 
 /**
