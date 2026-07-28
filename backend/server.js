@@ -35,6 +35,7 @@ if (!GOOGLE_API_KEY) {
 
 const CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 dagar — vägar ändras sällan
 const PLACES_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 90; // 90 dagar — adresser/orter ändras nästan aldrig
+const OVERNIGHT_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 14; // 14 dagar — OSM-data uppdateras oftare av communityn
 
 /** Avrundar koordinater till ~1 km precision, så närliggande förfrågningar delar cache-post. */
 function roundCoord(value) {
@@ -122,6 +123,37 @@ app.get("/places/details", async (req, res) => {
   }
 });
 
+/**
+ * Övernattningsplatser (husbil/husvagn/tältplats) nära en punkt, från
+ * OpenStreetMap via Overpass API — ett komplement till Trafikverkets
+ * rastplatser, för resenärer som planerar att övernatta på vägen.
+ * Data: © OpenStreetMap contributors, ODbL-licens.
+ */
+app.get("/overnight", async (req, res) => {
+  const lat = parseFloat(req.query.lat);
+  const lon = parseFloat(req.query.lon);
+  const radiusKm = parseFloat(req.query.radiusKm) || 20;
+
+  if (Number.isNaN(lat) || Number.isNaN(lon)) {
+    return res.status(400).json({ error: "lat och lon krävs som tal" });
+  }
+
+  const key = `overnight:${roundCoord(lat)},${roundCoord(lon)}:${radiusKm}`;
+  const cached = cache.get(key, OVERNIGHT_CACHE_TTL_MS);
+  if (cached) {
+    return res.json({ ...cached, cached: true });
+  }
+
+  try {
+    const result = await fetchOvernightFromOverpass(lat, lon, radiusKm);
+    cache.set(key, result);
+    res.json({ ...result, cached: false });
+  } catch (err) {
+    console.error("Fel vid anrop mot Overpass API:", err.message);
+    res.status(502).json({ error: "Kunde inte hämta övernattningsplatser just nu" });
+  }
+});
+
 async function fetchAutocompleteFromGoogle(query) {
   // Places API (New) — Autocomplete. Kräver att "Places API (New)" är
   // aktiverat i samma Google Cloud-projekt som Routes API.
@@ -176,6 +208,57 @@ async function fetchPlaceDetailsFromGoogle(placeId) {
   }
 
   return { lat: json.location.latitude, lon: json.location.longitude };
+}
+
+/**
+ * Frågar Overpass API (OpenStreetMaps sökgränssnitt) efter husbils-/
+ * husvagnsplatser och campingplatser inom en radie runt en punkt.
+ *
+ * OBS om artighet mot Overpass: den publika instansen (overpass-api.de)
+ * är gratis men delad av alla som använder den. Backend-cachen ovan
+ * (14 dagars TTL) gör att samma område bara frågas en gång totalt, oavsett
+ * hur många av era användare som råkar passera samma sträcka — det är
+ * precis den sortens artighet Overpass ber om. Om trafiken blir stor,
+ * överväg att självhosta en Overpass-instans eller byta till en betald
+ * leverantör (t.ex. Geoapify) istället för den delade publika instansen.
+ */
+async function fetchOvernightFromOverpass(lat, lon, radiusKm) {
+  const radiusMeters = Math.round(radiusKm * 1000);
+  const query = `
+    [out:json][timeout:25];
+    (
+      node["tourism"="caravan_site"](around:${radiusMeters},${lat},${lon});
+      node["tourism"="camp_site"](around:${radiusMeters},${lat},${lon});
+    );
+    out body;
+  `;
+
+  const response = await fetch("https://overpass-api.de/api/interpreter", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      // Overpass usage policy ber om en beskrivande User-Agent så de kan
+      // kontakta er vid problem, istället för att bara blockera er IP.
+      "User-Agent": "Avgangsplaneraren/1.0 (kontakt: fyll-i-din-epost-har)",
+    },
+    body: "data=" + encodeURIComponent(query),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Overpass svarade ${response.status}: ${await response.text()}`);
+  }
+
+  const json = await response.json();
+  const spots = (json.elements || []).map((el) => ({
+    id: String(el.id),
+    name: el.tags?.name || null,
+    lat: el.lat,
+    lon: el.lon,
+    type: el.tags?.tourism || "unknown",
+    hasFee: el.tags?.fee ? el.tags.fee === "yes" : null,
+  }));
+
+  return { spots };
 }
 
 async function fetchRouteFromGoogle(fromLat, fromLon, toLat, toLon) {
