@@ -163,7 +163,11 @@ app.get("/overnight", async (req, res) => {
     cache.set(key, result);
     res.json({ ...result, cached: false });
   } catch (err) {
-    console.error("Fel vid anrop mot Overpass API:", err.message);
+    console.error(
+      "Fel vid anrop mot Overpass API (alla speglar misslyckades):",
+      err.message,
+      err.cause ? `(orsak: ${err.cause})` : ""
+    );
     res.status(502).json({ error: "Kunde inte hämta övernattningsplatser just nu" });
   }
 });
@@ -228,13 +232,16 @@ async function fetchPlaceDetailsFromGoogle(placeId) {
  * Frågar Overpass API (OpenStreetMaps sökgränssnitt) efter husbils-/
  * husvagnsplatser och campingplatser inom en radie runt en punkt.
  *
- * OBS om artighet mot Overpass: den publika instansen (overpass-api.de)
- * är gratis men delad av alla som använder den. Backend-cachen ovan
- * (14 dagars TTL) gör att samma område bara frågas en gång totalt, oavsett
- * hur många av era användare som råkar passera samma sträcka — det är
- * precis den sortens artighet Overpass ber om. Om trafiken blir stor,
- * överväg att självhosta en Overpass-instans eller byta till en betald
- * leverantör (t.ex. Geoapify) istället för den delade publika instansen.
+ * Försöker mot huvudinstansen (overpass-api.de) först, och faller tillbaka
+ * på en community-driven spegel (kumi.systems) om den första inte går att
+ * nå — den publika huvudinstansen blockerar ibland trafik från
+ * molnleverantörers IP-adresser (t.ex. Render) som skydd mot missbruk.
+ *
+ * OBS om artighet mot Overpass: dessa instanser är gratis men delade av
+ * alla som använder dem. Backend-cachen (14 dagars TTL) gör att samma
+ * område bara frågas en gång totalt, oavsett hur många av era användare
+ * som råkar passera samma sträcka. Om trafiken blir stor, överväg att
+ * självhosta en Overpass-instans istället.
  */
 async function fetchOvernightFromOverpass(lat, lon, radiusKm, types) {
   const radiusMeters = Math.round(radiusKm * 1000);
@@ -249,7 +256,39 @@ async function fetchOvernightFromOverpass(lat, lon, radiusKm, types) {
     out body;
   `;
 
-  const response = await fetch("https://overpass-api.de/api/interpreter", {
+  const endpoints = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+  ];
+
+  let lastError;
+  for (const endpoint of endpoints) {
+    try {
+      const json = await postOverpassQuery(endpoint, query);
+      const rawSpots = (json.elements || []).map((el) => ({
+        id: String(el.id),
+        name: el.tags?.name || null,
+        lat: el.lat,
+        lon: el.lon,
+        type: el.tags?.tourism || "unknown",
+        hasFee: el.tags?.fee ? el.tags.fee === "yes" : null,
+      }));
+      return { spots: dedupeAndRankOvernightSpots(rawSpots) };
+    } catch (err) {
+      console.error(
+        `Overpass-anrop mot ${endpoint} misslyckades:`,
+        err.message,
+        err.cause ? `(orsak: ${err.cause})` : ""
+      );
+      lastError = err;
+    }
+  }
+
+  throw lastError;
+}
+
+async function postOverpassQuery(endpoint, query) {
+  const response = await fetch(endpoint, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
@@ -264,17 +303,7 @@ async function fetchOvernightFromOverpass(lat, lon, radiusKm, types) {
     throw new Error(`Overpass svarade ${response.status}: ${await response.text()}`);
   }
 
-  const json = await response.json();
-  const rawSpots = (json.elements || []).map((el) => ({
-    id: String(el.id),
-    name: el.tags?.name || null,
-    lat: el.lat,
-    lon: el.lon,
-    type: el.tags?.tourism || "unknown",
-    hasFee: el.tags?.fee ? el.tags.fee === "yes" : null,
-  }));
-
-  return { spots: dedupeAndRankOvernightSpots(rawSpots) };
+  return response.json();
 }
 
 /**
