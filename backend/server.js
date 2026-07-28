@@ -249,7 +249,7 @@ async function fetchOvernightFromOverpass(lat, lon, radiusKm) {
   }
 
   const json = await response.json();
-  const spots = (json.elements || []).map((el) => ({
+  const rawSpots = (json.elements || []).map((el) => ({
     id: String(el.id),
     name: el.tags?.name || null,
     lat: el.lat,
@@ -258,7 +258,43 @@ async function fetchOvernightFromOverpass(lat, lon, radiusKm) {
     hasFee: el.tags?.fee ? el.tags.fee === "yes" : null,
   }));
 
-  return { spots };
+  return { spots: dedupeAndRankOvernightSpots(rawSpots) };
+}
+
+/**
+ * OpenStreetMap kartlägger ibland en hel campingplats som MÅNGA separata
+ * punkter (en per tomt/pitch) istället för en punkt för hela anläggningen —
+ * det ger annars en lista med tiotals namnlösa, nästan identiska träffar.
+ * Här slås punkter som ligger väldigt nära varandra ihop till en enda
+ * representant, med namngivna platser prioriterade före namnlösa.
+ */
+function dedupeAndRankOvernightSpots(spots) {
+  const MIN_DISTANCE_KM = 1.5;
+  const MAX_RESULTS = 15;
+
+  const sorted = [...spots].sort((a, b) => (b.name ? 1 : 0) - (a.name ? 1 : 0));
+  const kept = [];
+
+  for (const spot of sorted) {
+    const tooCloseToExisting = kept.some(
+      (k) => haversineKm(k.lat, k.lon, spot.lat, spot.lon) < MIN_DISTANCE_KM
+    );
+    if (!tooCloseToExisting) {
+      kept.push(spot);
+    }
+  }
+
+  return kept.slice(0, MAX_RESULTS);
+}
+
+function haversineKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
 }
 
 async function fetchRouteFromGoogle(fromLat, fromLon, toLat, toLon) {
