@@ -288,22 +288,39 @@ async function fetchOvernightFromOverpass(lat, lon, radiusKm, types) {
 }
 
 async function postOverpassQuery(endpoint, query) {
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      // Overpass usage policy ber om en beskrivande User-Agent så de kan
-      // kontakta er vid problem, istället för att bara blockera er IP.
-      "User-Agent": "Avgangsplaneraren/1.0 (kontakt: fyll-i-din-epost-har)",
-    },
-    body: "data=" + encodeURIComponent(query),
-  });
+  const attempts = 2; // ett första försök + ett omförsök vid överbelastning
+  let lastError;
 
-  if (!response.ok) {
-    throw new Error(`Overpass svarade ${response.status}: ${await response.text()}`);
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          // Overpass usage policy ber om en beskrivande User-Agent så de kan
+          // kontakta er vid problem, istället för att bara blockera er IP.
+          "User-Agent": "Avgangsplaneraren/1.0 (kontakt: fyll-i-din-epost-har)",
+        },
+        body: "data=" + encodeURIComponent(query),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Overpass svarade ${response.status}: ${await response.text()}`);
+      }
+
+      return await response.json();
+    } catch (err) {
+      lastError = err;
+      const isLastAttempt = attempt === attempts;
+      // 504 "too busy" är precis den typen av tillfälligt fel ett omförsök
+      // faktiskt kan hjälpa mot — vänta 3 sekunder och försök en gång till.
+      if (!isLastAttempt) {
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+      }
+    }
   }
 
-  return response.json();
+  throw lastError;
 }
 
 /**
