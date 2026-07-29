@@ -27,6 +27,7 @@ import com.avgangsplaneraren.app.domain.RouteInfo
 import com.avgangsplaneraren.app.domain.TripInput
 import com.avgangsplaneraren.app.ui.board.DepartureBoard
 import com.avgangsplaneraren.app.ui.board.OvernightSpotsSection
+import com.avgangsplaneraren.app.ui.map.RouteMapView
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 
@@ -64,6 +65,7 @@ fun PlannerScreen() {
     var includeCampSites by remember { mutableStateOf(true) }
     var arrival by remember { mutableStateOf(LocalDateTime.now().plusHours(6)) }
     var result by remember { mutableStateOf<DepartureResult?>(null) }
+    var lastRoutePolyline by remember { mutableStateOf<List<Coordinates>>(emptyList()) }
     var overnightSpots by remember { mutableStateOf<List<OvernightSpot>>(emptyList()) }
     var overnightSearchDone by remember { mutableStateOf(false) }
     var overnightSearchFailed by remember { mutableStateOf(false) }
@@ -194,6 +196,7 @@ fun PlannerScreen() {
                 coroutineScope.launch {
                     try {
                         val route = routeProvider.getRoute(from, to)
+                        lastRoutePolyline = route.polyline
 
                         val campingStopMinutes = if (showOvernightSpots) {
                             campingStopHours * 60 + campingStopExtraMinutes
@@ -244,7 +247,17 @@ fun PlannerScreen() {
             Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         }
 
-        result?.let { DepartureBoard(it) }
+        result?.let { departureResult ->
+            DepartureBoard(departureResult)
+            RouteMapView(
+                routePoints = lastRoutePolyline,
+                fromName = fromName.orEmpty(),
+                toName = toName.orEmpty(),
+                restStops = departureResult.restStops,
+                overnightSpots = overnightSpots,
+                modifier = Modifier.padding(top = 16.dp)
+            )
+        }
 
         if (showOvernightSpots) {
             OvernightSpotsSection(

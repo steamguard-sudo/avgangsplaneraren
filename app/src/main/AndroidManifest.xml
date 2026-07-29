@@ -5,17 +5,21 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!--
-      usesCleartextTraffic="true" tillåter osäker http-trafik, vilket bara
-      behövs för att nå backend på http://10.0.2.2 under lokal utveckling.
-      Ta bort det (eller begränsa det till en dev-byggvariant) när backend
-      körs bakom HTTPS i produktion.
-    -->
     <application
         android:allowBackup="true"
         android:label="@string/app_name"
-
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
+
+        <!--
+          Maps SDK for Android kräver nyckeln direkt i appen (till skillnad
+          från Routes/Places API som går via backend) — kartritning sker på
+          enheten. Nyckeln läses från local.properties (aldrig committad)
+          via manifestPlaceholders i app/build.gradle.kts. Se KOM_IGANG.md
+          för hur nyckeln skapas och begränsas till just den här appen.
+        -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${MAPS_API_KEY}" />
 
         <activity
             android:name=".MainActivity"

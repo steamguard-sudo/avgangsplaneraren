@@ -1,3 +1,16 @@
+import java.util.Properties
+import java.io.FileInputStream
+
+// Läser MAPS_API_KEY från local.properties (aldrig committad till Git) och
+// gör den tillgänglig i AndroidManifest.xml som ${MAPS_API_KEY}. Se
+// KOM_IGANG.md för hur ni skapar och lägger in nyckeln.
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) {
+        load(FileInputStream(file))
+    }
+}
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -16,6 +29,8 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "0.1.0"
+
+        manifestPlaceholders["MAPS_API_KEY"] = localProperties.getProperty("MAPS_API_KEY", "")
     }
 
     buildFeatures {
