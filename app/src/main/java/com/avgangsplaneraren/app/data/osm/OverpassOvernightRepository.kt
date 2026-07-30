@@ -43,7 +43,11 @@ class OverpassOvernightRepository(baseUrl: String) : OvernightSpotProvider {
                 longitude = dto.lon,
                 distanceFromStartKm = distanceFromStartKm,
                 type = dto.type,
-                hasFee = dto.hasFee
+                hasFee = dto.hasFee,
+                allowsCaravan = dto.allowsCaravan,
+                allowsMotorhome = dto.allowsMotorhome,
+                allowsTent = dto.allowsTent,
+                distanceFromRouteKm = dto.distanceFromRouteKm
             )
         }
     }

@@ -5,13 +5,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.avgangsplaneraren.app.R
 
-/**
- * Väljare för en tidslängd (inte en tidpunkt) — t.ex. "hur länge blir
- * campingstoppet". Återanvänder Material 3:s TimePicker-hjul, men tolkar
- * resultatet som timmar+minuter istället för en klockslag, vilket är
- * mycket smidigare än att skriva siffror för hand.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DurationPicker(
@@ -30,8 +26,11 @@ fun DurationPicker(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
-                if (hours == 0 && minutes == 0) "Ingen tid vald"
-                else "$hours h ${minutes.toString().padStart(2, '0')} min"
+                if (hours == 0 && minutes == 0) {
+                    stringResource(R.string.duration_none_selected)
+                } else {
+                    stringResource(R.string.duration_format, hours, minutes.toString().padStart(2, '0'))
+                }
             )
         }
     }
@@ -48,10 +47,10 @@ fun DurationPicker(
                 TextButton(onClick = {
                     onDurationChange(timePickerState.hour, timePickerState.minute)
                     showPicker = false
-                }) { Text("Klart") }
+                }) { Text(stringResource(R.string.button_done)) }
             },
             dismissButton = {
-                TextButton(onClick = { showPicker = false }) { Text("Avbryt") }
+                TextButton(onClick = { showPicker = false }) { Text(stringResource(R.string.button_cancel)) }
             },
             text = { TimePicker(state = timePickerState) }
         )

@@ -77,6 +77,9 @@ dependencies {
     // Karta
     implementation("com.google.android.gms:play-services-maps:19.0.0")
 
+    // Språkval (AppCompatDelegate.setApplicationLocales)
+    implementation("androidx.appcompat:appcompat:1.7.0")
+
     // Lokal lagring
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")

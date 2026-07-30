@@ -1,0 +1,81 @@
+<resources>
+    <string name="app_name">Departure Planner</string>
+
+    <!-- Language selection -->
+    <string name="language_swedish">Svenska</string>
+    <string name="language_english">English</string>
+    <string name="language_german">Deutsch</string>
+
+    <!-- PlannerScreen -->
+    <string name="planner_title">Departure Planner</string>
+    <string name="planner_subtitle">Enter your departure point, destination and desired arrival time.</string>
+    <string name="label_from">Departure point</string>
+    <string name="label_to">Destination</string>
+    <string name="label_buffer_minutes">Buffer before departure (minutes)</string>
+    <string name="label_minutes_per_break">Break duration per stop (minutes)</string>
+    <string name="hint_minutes_per_break">Added once per break, roughly every 2 hours of driving</string>
+    <string name="checkbox_only_amenities">Only rest stops with tables &amp; benches</string>
+    <string name="checkbox_show_overnight">Show overnight options (OpenStreetMap)</string>
+    <string name="checkbox_caravan_sites">Motorhome/caravan</string>
+    <string name="checkbox_camp_sites">Camping (including tents)</string>
+    <string name="label_camping_stop_duration">Extra time for a camping stop</string>
+    <string name="hint_camping_stop_duration">E.g. an overnight stay or cooking. Leave at 0 if you\'re not planning a stop there.</string>
+    <string name="button_loading_data">Loading rest stop data …</string>
+    <string name="button_calculating">Calculating …</string>
+    <string name="button_choose_places">Choose departure and destination</string>
+    <string name="button_calculate">Calculate departure time</string>
+    <string name="error_calculate_failed">Could not calculate the trip: %1$s</string>
+
+    <!-- ArrivalDateTimePicker -->
+    <string name="label_arrival_time">Desired arrival time</string>
+    <string name="button_next">Next</string>
+    <string name="button_cancel">Cancel</string>
+    <string name="button_done">Done</string>
+
+    <!-- DurationPicker -->
+    <string name="duration_none_selected">No time selected</string>
+    <string name="duration_format">%1$d h %2$s min</string>
+
+    <!-- PlaceAutocompleteField -->
+    <string name="error_search_failed">Could not search right now</string>
+    <string name="error_fetch_place_failed">Could not fetch that location</string>
+
+    <!-- DepartureBoard -->
+    <string name="board_must_depart">YOU MUST LEAVE BY</string>
+    <string name="stat_distance">Distance</string>
+    <string name="stat_drive_time">Drive time</string>
+    <string name="stat_rest_stops">Rest stops</string>
+    <string name="rest_stops_title">Rest stops along the way</string>
+    <string name="rest_stop_distance">Approx. %1$d km into the trip</string>
+    <string name="fallback_rest_stop_name">Rest stop on %1$s</string>
+    <string name="unknown_road">unknown road</string>
+    <string name="badge_table">Table</string>
+    <string name="badge_bench">Bench</string>
+    <string name="badge_toilet">Toilet</string>
+    <string name="drive_time_format">%1$d h %2$d min</string>
+
+    <!-- OvernightSpotsSection -->
+    <string name="overnight_title">Overnight options nearby</string>
+    <string name="overnight_source">Source: the OpenStreetMap community — always double-check on site.</string>
+    <string name="overnight_failed_all">Could not search right now — OpenStreetMap\'s search server seems to be overloaded. Try again in a little while, it usually resolves itself.</string>
+    <string name="overnight_failed_partial">The search only partially succeeded (the server was overloaded for some sections) — the list below may be incomplete.</string>
+    <string name="overnight_empty">No overnight spots were found along this route. This usually means OpenStreetMap lacks mapped locations in the area, not that none exist in reality.</string>
+    <string name="overnight_distance_type">Approx. %1$d km into the trip · %2$s</string>
+    <string name="fee_paid">Costs money</string>
+    <string name="fee_free">Free</string>
+    <string name="fee_unknown">Price unknown</string>
+    <string name="vehicle_caravan">Caravan</string>
+    <string name="vehicle_motorhome">Motorhome</string>
+    <string name="vehicle_tent">Tent</string>
+    <string name="detour_warning">⚠ Approx. %1$d km from the route (as the crow flies) — likely a detour</string>
+    <string name="detour_normal">Approx. %1$d km from the route</string>
+    <string name="type_caravan_site">Motorhome/caravan site</string>
+    <string name="type_camp_site">Campsite</string>
+
+    <!-- RouteMapView -->
+    <string name="map_departure">Departure</string>
+    <string name="map_destination">Destination</string>
+    <string name="map_rest_stop_snippet">Rest stop · approx. %1$d km into the trip</string>
+    <string name="map_overnight_snippet">Overnight stay · approx. %1$d km into the trip</string>
+    <string name="map_legend">Green = departure · Red = destination · Orange = rest stop · Blue marker = overnight stay</string>
+</resources>

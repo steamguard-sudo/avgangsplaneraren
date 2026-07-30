@@ -16,5 +16,16 @@ data class OvernightSpot(
     val type: String,
     /** null = okänt (inte angivet i OSM), annars om platsen kostar pengar. */
     val hasFee: Boolean?,
+    /**
+     * Vilka ekipage som är välkomna, enligt OSM-taggarna `caravans`,
+     * `motorhome` och `tents`. null = inte angivet i OSM — vanligt, eftersom
+     * OSM-communityn själva flaggar att den här detaljnivån ofta saknas.
+     * Visa alltså "okänt", inte "nej", när värdet är null.
+     */
+    val allowsCaravan: Boolean?,
+    val allowsMotorhome: Boolean?,
+    val allowsTent: Boolean?,
+    /** Fågelvägen (km) från den sökta ruttpunkten till platsen — INTE körsträcka. */
+    val distanceFromRouteKm: Double,
     val source: String = "OpenStreetMap"
 )

@@ -4,17 +4,23 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.avgangsplaneraren.app.R
 import com.avgangsplaneraren.app.domain.DepartureResult
 import java.time.format.DateTimeFormatter
 
 private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
-private val dateFormatter = DateTimeFormatter.ofPattern("EEEE d MMMM")
 
 @Composable
 fun DepartureBoard(result: DepartureResult) {
+    val locale = LocalConfiguration.current.locales[0]
+    val dateFormatter = remember(locale) { DateTimeFormatter.ofPattern("EEEE d MMMM", locale) }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -22,7 +28,7 @@ fun DepartureBoard(result: DepartureResult) {
     ) {
         Card(shape = RoundedCornerShape(16.dp)) {
             Column(modifier = Modifier.padding(20.dp)) {
-                Text("DU MÅSTE AVGÅ SENAST", style = MaterialTheme.typography.labelMedium)
+                Text(stringResource(R.string.board_must_depart), style = MaterialTheme.typography.labelMedium)
                 Text(
                     result.departureTime.format(timeFormatter),
                     style = MaterialTheme.typography.displayMedium,
@@ -36,9 +42,16 @@ fun DepartureBoard(result: DepartureResult) {
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Stat("${result.distanceKm} km", "Sträcka")
-                    Stat("${(result.driveMinutes / 60).toInt()} h ${(result.driveMinutes % 60).toInt()} min", "Körtid")
-                    Stat("${result.restStops.size}", "Rastplatser")
+                    Stat("${result.distanceKm} km", stringResource(R.string.stat_distance))
+                    Stat(
+                        stringResource(
+                            R.string.drive_time_format,
+                            (result.driveMinutes / 60).toInt(),
+                            (result.driveMinutes % 60).toInt()
+                        ),
+                        stringResource(R.string.stat_drive_time)
+                    )
+                    Stat("${result.restStops.size}", stringResource(R.string.stat_rest_stops))
                 }
             }
         }
@@ -46,8 +59,11 @@ fun DepartureBoard(result: DepartureResult) {
         Spacer(modifier = Modifier.height(16.dp))
 
         if (result.restStops.isNotEmpty()) {
-            Text("Rastplatser på vägen", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.rest_stops_title), style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))
+            val tableLabel = stringResource(R.string.badge_table)
+            val benchLabel = stringResource(R.string.badge_bench)
+            val toiletLabel = stringResource(R.string.badge_toilet)
             result.restStops.forEach { stop ->
                 Card(
                     modifier = Modifier
@@ -60,13 +76,13 @@ fun DepartureBoard(result: DepartureResult) {
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            "Ca ${stop.distanceFromStartKm} km in på resan",
+                            stringResource(R.string.rest_stop_distance, stop.distanceFromStartKm),
                             style = MaterialTheme.typography.bodySmall
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Badge(text = "Bord", active = stop.hasTable)
-                            Badge(text = "Bänk", active = stop.hasBench)
-                            Badge(text = "Toalett", active = stop.hasToilet)
+                            Badge(text = tableLabel, active = stop.hasTable)
+                            Badge(text = benchLabel, active = stop.hasBench)
+                            Badge(text = toiletLabel, active = stop.hasToilet)
                         }
                     }
                 }

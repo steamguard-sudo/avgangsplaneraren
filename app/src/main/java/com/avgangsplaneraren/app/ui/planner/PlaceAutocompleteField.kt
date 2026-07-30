@@ -5,27 +5,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.avgangsplaneraren.app.R
 import com.avgangsplaneraren.app.domain.Coordinates
 import com.avgangsplaneraren.app.domain.PlaceProvider
 import com.avgangsplaneraren.app.domain.PlaceSuggestion
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/**
- * Fritextfält för att söka fram en plats (stad, adress, ort — vad som helst
- * Google Places känner till), med förslag som dyker upp medan man skriver.
- *
- * Söker inte vid varje tangenttryckning — väntar [debounceMillis] efter
- * senaste tryckningen innan den frågar backend, så att en snabb skrivare
- * inte skickar ett anrop per bokstav. När ett förslag väljs slås dess
- * koordinat upp i bakgrunden, och [onPlaceSelected] anropas när den är klar.
- *
- * Har en rensa-knapp (✕) när fältet innehåller text, så det är enkelt att
- * skriva om — t.ex. om man valde fel ort bland flera med samma namn
- * (Google Places förslagstexten innehåller normalt kommun/län för att
- * skilja dem åt, men det är ändå smidigt att kunna börja om direkt).
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlaceAutocompleteField(
@@ -46,14 +34,11 @@ fun PlaceAutocompleteField(
     var hasSelectedPlace by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    // Sök om `text` när den ändras, men vänta debounceMillis efter sista
-    // tangenttryckningen. Om texten ändras igen innan dess avbryts detta
-    // varv automatiskt, eftersom LaunchedEffect med `text` som nyckel
-    // startar om från början vid varje ny bokstav.
+    val searchFailedText = stringResource(R.string.error_search_failed)
+    val fetchPlaceFailedText = stringResource(R.string.error_fetch_place_failed)
+
     LaunchedEffect(text) {
         if (hasSelectedPlace) {
-            // Vi satte texten själva (användaren valde ett förslag) — inget
-            // nytt sök behövs för just den ändringen.
             return@LaunchedEffect
         }
         if (text.length < 2) {
@@ -69,7 +54,7 @@ fun PlaceAutocompleteField(
             expanded = suggestions.isNotEmpty()
         } catch (e: Exception) {
             suggestions = emptyList()
-            errorMessage = "Kunde inte söka just nu"
+            errorMessage = searchFailedText
         } finally {
             isSearching = false
         }
@@ -124,7 +109,7 @@ fun PlaceAutocompleteField(
                                 val coordinates = placeProvider.details(suggestion.placeId)
                                 onPlaceSelected(suggestion.description, coordinates)
                             } catch (e: Exception) {
-                                errorMessage = "Kunde inte hämta platsen"
+                                errorMessage = fetchPlaceFailedText
                             } finally {
                                 isResolving = false
                             }

@@ -8,7 +8,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.avgangsplaneraren.app.R
 import com.avgangsplaneraren.app.data.directions.AppConfig
 import com.avgangsplaneraren.app.data.directions.GooglePlacesRepository
 import com.avgangsplaneraren.app.data.directions.GoogleRoutesRepository
@@ -31,20 +33,6 @@ import com.avgangsplaneraren.app.ui.map.RouteMapView
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 
-/**
- * Enkel skärm som kopplar ihop formuläret med domänlogiken.
- * Detta är avsiktligt minimalt (ingen ViewModel/Hilt ännu) – tanken är att
- * ni bygger vidare med riktig arkitektur (MVVM + Hilt) när ni fyller på
- * med fler skärmar.
- *
- * Avreseplats/mål väljs via fritextsökning ([PlaceAutocompleteField], mot
- * Googles Places API via backend). Ruttdata hämtas via [GoogleRoutesRepository]
- * (Google Routes API via backend, med [RouteEstimator] som fallback om
- * anropet misslyckas). Rastplatser kommer från Trafikverket
- * ([TrafikverketRestStopRepository]), och — om användaren bockar i det —
- * övernattningsförslag från OpenStreetMap ([OverpassOvernightRepository]),
- * hämtade på tre punkter utspridda längs rutten (se [findOvernightSpotsAlongRoute]).
- */
 @Composable
 fun PlannerScreen() {
     val context = LocalContext.current
@@ -82,7 +70,6 @@ fun PlannerScreen() {
     val restStopRepository = remember { TrafikverketRestStopRepository(database.restAreaDao()) }
     val calculator = remember { CalculateDeparture(restStopProvider = restStopRepository) }
 
-    // Fyller databasen från assets/rastplatser.json första gången appen körs.
     LaunchedEffect(Unit) {
         TrafikverketDataSeeder.seedIfNeeded(context, database.restAreaDao())
         isSeeding = false
@@ -97,14 +84,16 @@ fun PlannerScreen() {
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("Avgångsplaneraren", style = MaterialTheme.typography.headlineSmall)
+        LanguageSelector()
+
+        Text(stringResource(R.string.planner_title), style = MaterialTheme.typography.headlineSmall)
         Text(
-            "Ange avresa, mål och önskad ankomsttid.",
+            stringResource(R.string.planner_subtitle),
             style = MaterialTheme.typography.bodyMedium
         )
 
         PlaceAutocompleteField(
-            label = "Avreseplats",
+            label = stringResource(R.string.label_from),
             placeProvider = placeProvider,
             onPlaceSelected = { name, coordinates ->
                 fromName = name
@@ -117,7 +106,7 @@ fun PlannerScreen() {
         )
 
         PlaceAutocompleteField(
-            label = "Slutmål",
+            label = stringResource(R.string.label_to),
             placeProvider = placeProvider,
             onPlaceSelected = { name, coordinates ->
                 toName = name
@@ -134,40 +123,40 @@ fun PlannerScreen() {
         OutlinedTextField(
             value = bufferMinutes.toString(),
             onValueChange = { bufferMinutes = it.toIntOrNull() ?: 0 },
-            label = { Text("Buffert innan avresa (minuter)") },
+            label = { Text(stringResource(R.string.label_buffer_minutes)) },
             modifier = Modifier.fillMaxWidth()
         )
 
         OutlinedTextField(
             value = minutesPerBreak.toString(),
             onValueChange = { minutesPerBreak = it.toIntOrNull() ?: 0 },
-            label = { Text("Rasttid per stopp (minuter)") },
-            supportingText = { Text("Läggs till en gång per rast, ungefär var 2:a körtimme") },
+            label = { Text(stringResource(R.string.label_minutes_per_break)) },
+            supportingText = { Text(stringResource(R.string.hint_minutes_per_break)) },
             modifier = Modifier.fillMaxWidth()
         )
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             Checkbox(checked = onlyAmenities, onCheckedChange = { onlyAmenities = it })
-            Text("Endast rastplatser med bord & bänk")
+            Text(stringResource(R.string.checkbox_only_amenities))
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             Checkbox(checked = showOvernightSpots, onCheckedChange = { showOvernightSpots = it })
-            Text("Visa övernattningsmöjligheter (OpenStreetMap)")
+            Text(stringResource(R.string.checkbox_show_overnight))
         }
 
         if (showOvernightSpots) {
             Column(modifier = Modifier.padding(start = 40.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = includeCaravanSites, onCheckedChange = { includeCaravanSites = it })
-                    Text("Husbil/husvagn", style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.checkbox_caravan_sites), style = MaterialTheme.typography.bodySmall)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = includeCampSites, onCheckedChange = { includeCampSites = it })
-                    Text("Camping (även tält)", style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.checkbox_camp_sites), style = MaterialTheme.typography.bodySmall)
                 }
                 DurationPicker(
-                    label = "Extra tid vid campingstopp",
+                    label = stringResource(R.string.label_camping_stop_duration),
                     hours = campingStopHours,
                     minutes = campingStopExtraMinutes,
                     onDurationChange = { h, m ->
@@ -177,7 +166,7 @@ fun PlannerScreen() {
                     modifier = Modifier.fillMaxWidth()
                 )
                 Text(
-                    "T.ex. övernattning eller matlagning. Lämna på 0 om du inte planerar ett stopp där.",
+                    stringResource(R.string.hint_camping_stop_duration),
                     style = MaterialTheme.typography.labelSmall
                 )
             }
@@ -225,7 +214,7 @@ fun PlannerScreen() {
                             overnightSearchDone = true
                         }
                     } catch (e: Exception) {
-                        errorMessage = "Kunde inte beräkna resan: ${e.message}"
+                        errorMessage = context.getString(R.string.error_calculate_failed, e.message)
                     } finally {
                         isCalculating = false
                     }
@@ -235,10 +224,10 @@ fun PlannerScreen() {
         ) {
             Text(
                 when {
-                    isSeeding -> "Laddar rastplatsdata …"
-                    isCalculating -> "Beräknar …"
-                    fromCoord == null || toCoord == null -> "Välj avresa och mål"
-                    else -> "Beräkna avgångstid"
+                    isSeeding -> stringResource(R.string.button_loading_data)
+                    isCalculating -> stringResource(R.string.button_calculating)
+                    fromCoord == null || toCoord == null -> stringResource(R.string.button_choose_places)
+                    else -> stringResource(R.string.button_calculate)
                 }
             )
         }
@@ -269,30 +258,11 @@ fun PlannerScreen() {
     }
 }
 
-/** Resultat av en övernattningssökning: platserna som hittades, och om något sökanrop misslyckades. */
 private data class OvernightSearchOutcome(
     val spots: List<OvernightSpot>,
     val hadFailure: Boolean
 )
 
-/**
- * Söker efter övernattningsplatser på flera punkter utspridda längs rutten
- * istället för bara mittpunkten — en enda punkt missar lätt allt om den
- * råkar hamna i ett glesbefolkat område, särskilt på längre resor genom
- * t.ex. Bergslagen eller andra skogsrika sträckor. Antalet sökpunkter
- * skalas efter reslängden (ungefär en punkt per 150 km, minst 3, max 8)
- * så att långa resor inte lämnar stora luckor mellan sökpunkterna.
- *
- * Om ett sökanrop misslyckas (t.ex. Overpass överbelastad) fångas felet
- * per punkt — resten av punkterna söks ändå, men [OvernightSearchOutcome.hadFailure]
- * sätts till true så att UI:t kan visa "kunde inte söka just nu" istället
- * för att felaktigt se ut som "inga platser finns här".
- *
- * Max [maxPerPoint] platser tas med per delsträcka (annars kan en tät
- * anläggning dominera hela listan) — resultaten slås sedan ihop och
- * dubbletter (samma namn + nästan samma koordinat, t.ex. om två
- * sökcirklar överlappar) filtreras bort.
- */
 private suspend fun findOvernightSpotsAlongRoute(
     provider: OvernightSpotProvider,
     route: RouteInfo,
@@ -323,7 +293,6 @@ private suspend fun findOvernightSpotsAlongRoute(
         }
     }
 
-    // Enkel dubblettfiltrering: samma namn inom ~0.01° (ca 1 km) räknas som samma plats.
     val seen = mutableSetOf<String>()
     val deduped = allSpots.filter { spot ->
         val key = "${spot.name}:${(spot.latitude * 100).toInt()}:${(spot.longitude * 100).toInt()}"

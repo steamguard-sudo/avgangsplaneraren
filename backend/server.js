@@ -272,6 +272,14 @@ async function fetchOvernightFromOverpass(lat, lon, radiusKm, types) {
         lon: el.lon,
         type: el.tags?.tourism || "unknown",
         hasFee: el.tags?.fee ? el.tags.fee === "yes" : null,
+        allowsCaravan: parseOsmYesNo(el.tags?.caravans),
+        allowsMotorhome: parseOsmYesNo(el.tags?.motorhome),
+        allowsTent: parseOsmYesNo(el.tags?.tents),
+        // Fågelvägen från den sökta ruttpunkten till platsen — INTE
+        // körsträcka. En sjö eller omväg kan göra den verkliga omvägen
+        // betydligt längre än detta tal, men det ger ändå en fingervisning
+        // om vad som är en rimlig avvikelse från rutten.
+        distanceFromRouteKm: Math.round(haversineKm(lat, lon, el.lat, el.lon) * 10) / 10,
       }));
       return { spots: dedupeAndRankOvernightSpots(rawSpots) };
     } catch (err) {
@@ -330,6 +338,21 @@ async function postOverpassQuery(endpoint, query) {
  * Här slås punkter som ligger väldigt nära varandra ihop till en enda
  * representant, med namngivna platser prioriterade före namnlösa.
  */
+/**
+ * Tolkar OSM:s ja/nej-liknande värden (t.ex. för `caravans`, `motorhome`,
+ * `tents`-taggarna, som anger om husvagn/husbil/tält är välkomna).
+ * Returnerar null om värdet saknas eller är oklart — OSM-communityn
+ * flaggar själva att den här informationen ofta saknas helt, så "vet
+ * inte" måste kunna skiljas från "nej" i appen.
+ */
+function parseOsmYesNo(value) {
+  if (value === undefined || value === null) return null;
+  const v = String(value).toLowerCase();
+  if (["yes", "designated", "only"].includes(v)) return true;
+  if (v === "no") return false;
+  return null;
+}
+
 function dedupeAndRankOvernightSpots(spots) {
   const MIN_DISTANCE_KM = 1.5;
   const MAX_RESULTS = 15;
@@ -346,7 +369,13 @@ function dedupeAndRankOvernightSpots(spots) {
     }
   }
 
-  return kept.slice(0, MAX_RESULTS);
+  // Sortera de kvarvarande platserna efter avstånd från ruttpunkten (inte
+  // efter namn) innan avklippning till MAX_RESULTS — annars kan en
+  // namngiven plats långt bort tränga undan en oftast mer relevant,
+  // närmare men namnlös plats.
+  const byDistance = [...kept].sort((a, b) => a.distanceFromRouteKm - b.distanceFromRouteKm);
+
+  return byDistance.slice(0, MAX_RESULTS);
 }
 
 function haversineKm(lat1, lon1, lat2, lon2) {

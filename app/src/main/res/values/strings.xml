@@ -1,3 +1,81 @@
 <resources>
     <string name="app_name">Avgångsplaneraren</string>
+
+    <!-- Språkval -->
+    <string name="language_swedish">Svenska</string>
+    <string name="language_english">English</string>
+    <string name="language_german">Deutsch</string>
+
+    <!-- PlannerScreen -->
+    <string name="planner_title">Avgångsplaneraren</string>
+    <string name="planner_subtitle">Ange avresa, mål och önskad ankomsttid.</string>
+    <string name="label_from">Avreseplats</string>
+    <string name="label_to">Slutmål</string>
+    <string name="label_buffer_minutes">Buffert innan avresa (minuter)</string>
+    <string name="label_minutes_per_break">Rasttid per stopp (minuter)</string>
+    <string name="hint_minutes_per_break">Läggs till en gång per rast, ungefär var 2:a körtimme</string>
+    <string name="checkbox_only_amenities">Endast rastplatser med bord &amp; bänk</string>
+    <string name="checkbox_show_overnight">Visa övernattningsmöjligheter (OpenStreetMap)</string>
+    <string name="checkbox_caravan_sites">Husbil/husvagn</string>
+    <string name="checkbox_camp_sites">Camping (även tält)</string>
+    <string name="label_camping_stop_duration">Extra tid vid campingstopp</string>
+    <string name="hint_camping_stop_duration">T.ex. övernattning eller matlagning. Lämna på 0 om du inte planerar ett stopp där.</string>
+    <string name="button_loading_data">Laddar rastplatsdata …</string>
+    <string name="button_calculating">Beräknar …</string>
+    <string name="button_choose_places">Välj avresa och mål</string>
+    <string name="button_calculate">Beräkna avgångstid</string>
+    <string name="error_calculate_failed">Kunde inte beräkna resan: %1$s</string>
+
+    <!-- ArrivalDateTimePicker -->
+    <string name="label_arrival_time">Önskad ankomsttid</string>
+    <string name="button_next">Nästa</string>
+    <string name="button_cancel">Avbryt</string>
+    <string name="button_done">Klart</string>
+
+    <!-- DurationPicker -->
+    <string name="duration_none_selected">Ingen tid vald</string>
+    <string name="duration_format">%1$d h %2$s min</string>
+
+    <!-- PlaceAutocompleteField -->
+    <string name="error_search_failed">Kunde inte söka just nu</string>
+    <string name="error_fetch_place_failed">Kunde inte hämta platsen</string>
+
+    <!-- DepartureBoard -->
+    <string name="board_must_depart">DU MÅSTE AVGÅ SENAST</string>
+    <string name="stat_distance">Sträcka</string>
+    <string name="stat_drive_time">Körtid</string>
+    <string name="stat_rest_stops">Rastplatser</string>
+    <string name="rest_stops_title">Rastplatser på vägen</string>
+    <string name="rest_stop_distance">Ca %1$d km in på resan</string>
+    <string name="fallback_rest_stop_name">Rastplats vid %1$s</string>
+    <string name="unknown_road">okänd väg</string>
+    <string name="badge_table">Bord</string>
+    <string name="badge_bench">Bänk</string>
+    <string name="badge_toilet">Toalett</string>
+    <string name="drive_time_format">%1$d h %2$d min</string>
+
+    <!-- OvernightSpotsSection -->
+    <string name="overnight_title">Övernattningsmöjligheter i närheten</string>
+    <string name="overnight_source">Källa: OpenStreetMap-communityn — dubbelkolla alltid på plats.</string>
+    <string name="overnight_failed_all">Kunde inte söka just nu — OpenStreetMaps sökserver verkar vara överbelastad. Försök igen om en liten stund, det brukar lösa sig.</string>
+    <string name="overnight_failed_partial">Sökningen lyckades bara delvis (servern var överbelastad på vissa delsträckor) — listan nedan kan vara ofullständig.</string>
+    <string name="overnight_empty">Inga övernattningsplatser hittades längs den här rutten. Det betyder oftast att OpenStreetMap saknar kartlagda platser i området, inte att det inte finns några i verkligheten.</string>
+    <string name="overnight_distance_type">Ca %1$d km in på resan · %2$s</string>
+    <string name="fee_paid">Kostar pengar</string>
+    <string name="fee_free">Gratis</string>
+    <string name="fee_unknown">Pris okänt</string>
+    <string name="vehicle_caravan">Husvagn</string>
+    <string name="vehicle_motorhome">Husbil</string>
+    <string name="vehicle_tent">Tält</string>
+    <string name="detour_warning">⚠ Ca %1$d km från rutten (fågelvägen) — troligen en omväg</string>
+    <string name="detour_normal">Ca %1$d km från rutten</string>
+    <string name="type_caravan_site">Husbils-/husvagnsplats</string>
+    <string name="type_camp_site">Campingplats</string>
+
+    <!-- RouteMapView -->
+    <string name="map_departure">Avresa</string>
+    <string name="map_destination">Mål</string>
+    <string name="map_rest_stop_snippet">Rastplats · ca %1$d km in på resan</string>
+    <string name="map_overnight_snippet">Övernattning · ca %1$d km in på resan</string>
+    <string name="map_legend">Grön = avresa · Röd = mål · Orange = rastplats · Blå markör = övernattning</string>
 </resources>

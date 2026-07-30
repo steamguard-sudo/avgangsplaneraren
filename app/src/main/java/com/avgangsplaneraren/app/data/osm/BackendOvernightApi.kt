@@ -28,5 +28,9 @@ data class OvernightSpotDto(
     val lat: Double,
     val lon: Double,
     val type: String,
-    val hasFee: Boolean? = null
+    val hasFee: Boolean? = null,
+    val allowsCaravan: Boolean? = null,
+    val allowsMotorhome: Boolean? = null,
+    val allowsTent: Boolean? = null,
+    val distanceFromRouteKm: Double = 0.0
 )

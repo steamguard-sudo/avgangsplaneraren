@@ -1,0 +1,81 @@
+<resources>
+    <string name="app_name">Abfahrtsplaner</string>
+
+    <!-- Sprachauswahl -->
+    <string name="language_swedish">Svenska</string>
+    <string name="language_english">English</string>
+    <string name="language_german">Deutsch</string>
+
+    <!-- PlannerScreen -->
+    <string name="planner_title">Abfahrtsplaner</string>
+    <string name="planner_subtitle">Geben Sie Abfahrtsort, Ziel und gewünschte Ankunftszeit ein.</string>
+    <string name="label_from">Abfahrtsort</string>
+    <string name="label_to">Ziel</string>
+    <string name="label_buffer_minutes">Puffer vor der Abfahrt (Minuten)</string>
+    <string name="label_minutes_per_break">Pausendauer pro Stopp (Minuten)</string>
+    <string name="hint_minutes_per_break">Wird einmal pro Pause hinzugefügt, etwa alle 2 Fahrstunden</string>
+    <string name="checkbox_only_amenities">Nur Rastplätze mit Tisch &amp; Bank</string>
+    <string name="checkbox_show_overnight">Übernachtungsmöglichkeiten anzeigen (OpenStreetMap)</string>
+    <string name="checkbox_caravan_sites">Wohnmobil/Wohnwagen</string>
+    <string name="checkbox_camp_sites">Camping (auch Zelte)</string>
+    <string name="label_camping_stop_duration">Zusätzliche Zeit für einen Campingstopp</string>
+    <string name="hint_camping_stop_duration">Z. B. Übernachtung oder Kochen. Auf 0 lassen, wenn kein Stopp geplant ist.</string>
+    <string name="button_loading_data">Rastplatzdaten werden geladen …</string>
+    <string name="button_calculating">Wird berechnet …</string>
+    <string name="button_choose_places">Abfahrt und Ziel wählen</string>
+    <string name="button_calculate">Abfahrtszeit berechnen</string>
+    <string name="error_calculate_failed">Die Fahrt konnte nicht berechnet werden: %1$s</string>
+
+    <!-- ArrivalDateTimePicker -->
+    <string name="label_arrival_time">Gewünschte Ankunftszeit</string>
+    <string name="button_next">Weiter</string>
+    <string name="button_cancel">Abbrechen</string>
+    <string name="button_done">Fertig</string>
+
+    <!-- DurationPicker -->
+    <string name="duration_none_selected">Keine Zeit ausgewählt</string>
+    <string name="duration_format">%1$d Std %2$s Min</string>
+
+    <!-- PlaceAutocompleteField -->
+    <string name="error_search_failed">Suche momentan nicht möglich</string>
+    <string name="error_fetch_place_failed">Ort konnte nicht abgerufen werden</string>
+
+    <!-- DepartureBoard -->
+    <string name="board_must_depart">SPÄTESTE ABFAHRTSZEIT</string>
+    <string name="stat_distance">Strecke</string>
+    <string name="stat_drive_time">Fahrzeit</string>
+    <string name="stat_rest_stops">Rastplätze</string>
+    <string name="rest_stops_title">Rastplätze auf dem Weg</string>
+    <string name="rest_stop_distance">Ca. %1$d km ab Start</string>
+    <string name="fallback_rest_stop_name">Rastplatz an %1$s</string>
+    <string name="unknown_road">unbekannter Straße</string>
+    <string name="badge_table">Tisch</string>
+    <string name="badge_bench">Bank</string>
+    <string name="badge_toilet">Toilette</string>
+    <string name="drive_time_format">%1$d Std %2$d Min</string>
+
+    <!-- OvernightSpotsSection -->
+    <string name="overnight_title">Übernachtungsmöglichkeiten in der Nähe</string>
+    <string name="overnight_source">Quelle: die OpenStreetMap-Community — bitte immer vor Ort prüfen.</string>
+    <string name="overnight_failed_all">Suche momentan nicht möglich — der OpenStreetMap-Suchserver scheint überlastet zu sein. Bitte in Kürze erneut versuchen, meist behebt sich das von selbst.</string>
+    <string name="overnight_failed_partial">Die Suche war nur teilweise erfolgreich (der Server war auf einigen Teilstrecken überlastet) — die folgende Liste kann unvollständig sein.</string>
+    <string name="overnight_empty">Entlang dieser Route wurden keine Übernachtungsmöglichkeiten gefunden. Das bedeutet meist, dass OpenStreetMap in diesem Gebiet keine kartierten Orte hat — nicht, dass es in Wirklichkeit keine gibt.</string>
+    <string name="overnight_distance_type">Ca. %1$d km ab Start · %2$s</string>
+    <string name="fee_paid">Kostenpflichtig</string>
+    <string name="fee_free">Kostenlos</string>
+    <string name="fee_unknown">Preis unbekannt</string>
+    <string name="vehicle_caravan">Wohnwagen</string>
+    <string name="vehicle_motorhome">Wohnmobil</string>
+    <string name="vehicle_tent">Zelt</string>
+    <string name="detour_warning">⚠ Ca. %1$d km von der Route entfernt (Luftlinie) — vermutlich ein Umweg</string>
+    <string name="detour_normal">Ca. %1$d km von der Route entfernt</string>
+    <string name="type_caravan_site">Wohnmobil-/Wohnwagenstellplatz</string>
+    <string name="type_camp_site">Campingplatz</string>
+
+    <!-- RouteMapView -->
+    <string name="map_departure">Abfahrt</string>
+    <string name="map_destination">Ziel</string>
+    <string name="map_rest_stop_snippet">Rastplatz · ca. %1$d km ab Start</string>
+    <string name="map_overnight_snippet">Übernachtung · ca. %1$d km ab Start</string>
+    <string name="map_legend">Grün = Abfahrt · Rot = Ziel · Orange = Rastplatz · Blauer Marker = Übernachtung</string>
+</resources>
