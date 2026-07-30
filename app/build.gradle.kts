@@ -1,9 +1,6 @@
 import java.util.Properties
 import java.io.FileInputStream
 
-// Läser MAPS_API_KEY från local.properties (aldrig committad till Git) och
-// gör den tillgänglig i AndroidManifest.xml som ${MAPS_API_KEY}. Se
-// KOM_IGANG.md för hur ni skapar och lägger in nyckeln.
 val localProperties = Properties().apply {
     val file = rootProject.file("local.properties")
     if (file.exists()) {
@@ -25,7 +22,7 @@ android {
 
     defaultConfig {
         applicationId = "com.avgangsplaneraren.app"
-        minSdk = 26 // java.time utan desugaring; sänk till 24 + core-library-desugaring vid behov
+        minSdk = 26
         targetSdk = 34
         versionCode = 1
         versionName = "0.1.0"
@@ -56,7 +53,6 @@ android {
 }
 
 dependencies {
-    // Compose
     implementation(platform("androidx.compose:compose-bom:2024.06.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.material3:material3")
@@ -65,30 +61,21 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.2")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
-    // Nätverk (Directions API, Overpass API)
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:1.0.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 
-    // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 
-    // Karta
     implementation("com.google.android.gms:play-services-maps:19.0.0")
 
-    // Språkval (AppCompatDelegate.setApplicationLocales)
-    implementation("androidx.appcompat:appcompat:1.7.0")
-
-    // Lokal lagring
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
     kapt("androidx.room:room-compiler:2.6.1")
 
-    // Dependency injection
     implementation("com.google.dagger:hilt-android:2.51.1")
     kapt("com.google.dagger:hilt-compiler:2.51.1")
 
-    // Test
     testImplementation("junit:junit:4.13.2")
 }

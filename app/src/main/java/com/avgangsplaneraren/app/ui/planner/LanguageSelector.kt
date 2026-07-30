@@ -1,7 +1,5 @@
 package com.avgangsplaneraren.app.ui.planner
 
-import android.app.Activity
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -11,39 +9,27 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.core.os.LocaleListCompat
+import com.avgangsplaneraren.app.AppLanguageState
 import com.avgangsplaneraren.app.R
 
 private data class LanguageOption(val flag: String, val tag: String, val labelRes: Int)
 
 private val LANGUAGE_OPTIONS = listOf(
-    LanguageOption("\uD83C\uDDF8\uD83C\uDDEA", "sv", R.string.language_swedish), // 🇸🇪
-    LanguageOption("\uD83C\uDDEC\uD83C\uDDE7", "en", R.string.language_english), // 🇬🇧
-    LanguageOption("\uD83C\uDDE9\uD83C\uDDEA", "de", R.string.language_german)   // 🇩🇪
+    LanguageOption("\uD83C\uDDF8\uD83C\uDDEA", "sv", R.string.language_swedish),
+    LanguageOption("\uD83C\uDDEC\uD83C\uDDE7", "en", R.string.language_english),
+    LanguageOption("\uD83C\uDDE9\uD83C\uDDEA", "de", R.string.language_german)
 )
 
-/**
- * Språkväljare med tre flaggor (svenska/engelska/tyska). Byter appens språk
- * direkt via [AppCompatDelegate.setApplicationLocales] — Android sköter
- * sedan om att spara valet automatiskt (kräver ingen egen lagring från oss)
- * och laddar om skärmen med rätt språk.
- *
- * Kräver `androidx.appcompat:appcompat` (se app/build.gradle.kts). Fungerar
- * oavsett om Activity ärver från AppCompatActivity eller inte.
- */
 @Composable
 fun LanguageSelector(modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    val currentTag = AppCompatDelegate.getApplicationLocales()
-        .takeIf { !it.isEmpty }
-        ?.get(0)
-        ?.language
-        ?: "sv"
+    val currentTag by AppLanguageState.current
 
     Row(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -63,10 +49,7 @@ fun LanguageSelector(modifier: Modifier = Modifier) {
                     )
                     .padding(4.dp)
                     .clickable {
-                        AppCompatDelegate.setApplicationLocales(
-                            LocaleListCompat.forLanguageTags(option.tag)
-                        )
-                        (context as? Activity)?.recreate()
+                        AppLanguageState.select(context, option.tag)
                     }
             )
         }
