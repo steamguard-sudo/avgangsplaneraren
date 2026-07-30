@@ -78,4 +78,16 @@
     <string name="map_rest_stop_snippet">Rest stop · approx. %1$d km into the trip</string>
     <string name="map_overnight_snippet">Overnight stay · approx. %1$d km into the trip</string>
     <string name="map_legend">Green = departure · Red = destination · Orange = rest stop · Blue marker = overnight stay</string>
+
+    <!-- Notifications -->
+    <string name="checkbox_notify_before">Remind me before departure time</string>
+    <string name="label_notify_minutes">Remind (minutes before)</string>
+    <string name="notification_permission_rationale">The app needs your permission to show notifications.</string>
+    <string name="button_grant_notification_permission">Allow notifications</string>
+    <string name="button_enable_exact_alarms">Enable exact alarms in settings</string>
+    <string name="notification_scheduled_confirmation">Reminder set for %1$s</string>
+    <string name="notification_channel_name">Departure reminders</string>
+    <string name="notification_channel_description">Reminds you before you need to leave for a calculated trip.</string>
+    <string name="notification_title">Time to get ready!</string>
+    <string name="notification_text">You need to leave %1$s towards %2$s soon.</string>
 </resources>

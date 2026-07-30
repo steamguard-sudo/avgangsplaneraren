@@ -1,5 +1,11 @@
 package com.avgangsplaneraren.app.ui.planner
 
+import android.Manifest
+import android.content.Intent
+import android.os.Build
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -10,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.avgangsplaneraren.app.R
 import com.avgangsplaneraren.app.data.directions.AppConfig
 import com.avgangsplaneraren.app.data.directions.GooglePlacesRepository
@@ -27,11 +34,14 @@ import com.avgangsplaneraren.app.domain.OvernightSpotProvider
 import com.avgangsplaneraren.app.domain.OvernightSpotType
 import com.avgangsplaneraren.app.domain.RouteInfo
 import com.avgangsplaneraren.app.domain.TripInput
+import com.avgangsplaneraren.app.notifications.NotificationScheduler
 import com.avgangsplaneraren.app.ui.board.DepartureBoard
 import com.avgangsplaneraren.app.ui.board.OvernightSpotsSection
 import com.avgangsplaneraren.app.ui.map.RouteMapView
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun PlannerScreen() {
@@ -60,6 +70,24 @@ fun PlannerScreen() {
     var isSeeding by remember { mutableStateOf(true) }
     var isCalculating by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    var notifyEnabled by remember { mutableStateOf(false) }
+    var notifyMinutesBefore by remember { mutableStateOf(15) }
+    var notificationPermissionGranted by remember {
+        mutableStateOf(
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        )
+    }
+    var canScheduleExactAlarms by remember { mutableStateOf(NotificationScheduler.canScheduleExactAlarms(context)) }
+    var notificationScheduledMessage by remember { mutableStateOf<String?>(null) }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> notificationPermissionGranted = granted }
 
     val placeProvider = remember { GooglePlacesRepository(baseUrl = AppConfig.BACKEND_BASE_URL) }
     val routeProvider = remember {
@@ -172,6 +200,61 @@ fun PlannerScreen() {
             }
         }
 
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(
+                checked = notifyEnabled,
+                onCheckedChange = { checked ->
+                    notifyEnabled = checked
+                    if (checked &&
+                        !notificationPermissionGranted &&
+                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                    ) {
+                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                    if (checked) {
+                        canScheduleExactAlarms = NotificationScheduler.canScheduleExactAlarms(context)
+                    }
+                }
+            )
+            Text(stringResource(R.string.checkbox_notify_before))
+        }
+
+        if (notifyEnabled) {
+            Column(modifier = Modifier.padding(start = 40.dp)) {
+                OutlinedTextField(
+                    value = notifyMinutesBefore.toString(),
+                    onValueChange = { notifyMinutesBefore = it.toIntOrNull() ?: 0 },
+                    label = { Text(stringResource(R.string.label_notify_minutes)) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                if (!notificationPermissionGranted) {
+                    Text(
+                        stringResource(R.string.notification_permission_rationale),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    TextButton(onClick = {
+                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }) {
+                        Text(stringResource(R.string.button_grant_notification_permission))
+                    }
+                }
+
+                if (!canScheduleExactAlarms) {
+                    TextButton(onClick = {
+                        context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
+                    }) {
+                        Text(stringResource(R.string.button_enable_exact_alarms))
+                    }
+                }
+
+                notificationScheduledMessage?.let {
+                    Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                }
+            }
+        }
+
         Button(
             enabled = canCalculate,
             onClick = {
@@ -182,6 +265,7 @@ fun PlannerScreen() {
                 overnightSpots = emptyList()
                 overnightSearchDone = false
                 overnightSearchFailed = false
+                notificationScheduledMessage = null
                 coroutineScope.launch {
                     try {
                         val route = routeProvider.getRoute(from, to)
@@ -201,7 +285,36 @@ fun PlannerScreen() {
                             minutesPerBreak = minutesPerBreak,
                             campingStopMinutes = campingStopMinutes
                         )
-                        result = calculator.calculate(trip, route)
+                        val departureResult = calculator.calculate(trip, route)
+                        result = departureResult
+
+                        if (notifyEnabled) {
+                            val triggerTime = departureResult.departureTime.minusMinutes(notifyMinutesBefore.toLong())
+                            val triggerAtMillis = triggerTime
+                                .atZone(ZoneId.systemDefault())
+                                .toInstant()
+                                .toEpochMilli()
+
+                            if (triggerAtMillis > System.currentTimeMillis()) {
+                                NotificationScheduler.ensureChannel(context)
+                                val scheduled = NotificationScheduler.schedule(
+                                    context = context,
+                                    triggerAtMillis = triggerAtMillis,
+                                    fromPlace = fromName.orEmpty(),
+                                    toPlace = toName.orEmpty()
+                                )
+                                canScheduleExactAlarms = scheduled || NotificationScheduler.canScheduleExactAlarms(context)
+                                notificationScheduledMessage = if (scheduled) {
+                                    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+                                    context.getString(
+                                        R.string.notification_scheduled_confirmation,
+                                        triggerTime.format(timeFormatter)
+                                    )
+                                } else {
+                                    null
+                                }
+                            }
+                        }
 
                         if (showOvernightSpots) {
                             val types = buildSet {

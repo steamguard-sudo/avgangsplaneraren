@@ -68,6 +68,8 @@ dependencies {
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 
+    implementation("androidx.core:core-ktx:1.13.1")
+
     implementation("com.google.android.gms:play-services-maps:19.0.0")
 
     implementation("androidx.room:room-runtime:2.6.1")

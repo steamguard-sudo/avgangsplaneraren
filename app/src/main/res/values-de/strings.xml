@@ -78,4 +78,16 @@
     <string name="map_rest_stop_snippet">Rastplatz · ca. %1$d km ab Start</string>
     <string name="map_overnight_snippet">Übernachtung · ca. %1$d km ab Start</string>
     <string name="map_legend">Grün = Abfahrt · Rot = Ziel · Orange = Rastplatz · Blauer Marker = Übernachtung</string>
+
+    <!-- Benachrichtigungen -->
+    <string name="checkbox_notify_before">Vor der Abfahrtszeit erinnern</string>
+    <string name="label_notify_minutes">Erinnerung (Minuten vorher)</string>
+    <string name="notification_permission_rationale">Die App benötigt Ihre Erlaubnis, um Benachrichtigungen anzuzeigen.</string>
+    <string name="button_grant_notification_permission">Benachrichtigungen erlauben</string>
+    <string name="button_enable_exact_alarms">Exakte Alarme in den Einstellungen aktivieren</string>
+    <string name="notification_scheduled_confirmation">Erinnerung eingestellt für %1$s</string>
+    <string name="notification_channel_name">Abfahrtserinnerungen</string>
+    <string name="notification_channel_description">Erinnert Sie, bevor Sie für eine berechnete Fahrt losfahren müssen.</string>
+    <string name="notification_title">Zeit, sich bereit zu machen!</string>
+    <string name="notification_text">Sie müssen bald von %1$s nach %2$s losfahren.</string>
 </resources>

@@ -78,4 +78,16 @@
     <string name="map_rest_stop_snippet">Rastplats · ca %1$d km in på resan</string>
     <string name="map_overnight_snippet">Övernattning · ca %1$d km in på resan</string>
     <string name="map_legend">Grön = avresa · Röd = mål · Orange = rastplats · Blå markör = övernattning</string>
+
+    <!-- Notiser -->
+    <string name="checkbox_notify_before">Påminn mig innan avgångstid</string>
+    <string name="label_notify_minutes">Påminn (minuter innan)</string>
+    <string name="notification_permission_rationale">Appen behöver din tillåtelse för att visa notiser.</string>
+    <string name="button_grant_notification_permission">Tillåt notiser</string>
+    <string name="button_enable_exact_alarms">Aktivera exakta larm i inställningarna</string>
+    <string name="notification_scheduled_confirmation">Påminnelse inställd till %1$s</string>
+    <string name="notification_channel_name">Avgångspåminnelser</string>
+    <string name="notification_channel_description">Påminner dig innan du måste avgå för en beräknad resa.</string>
+    <string name="notification_title">Dags att göra dig redo!</string>
+    <string name="notification_text">Du behöver snart avgå från %1$s mot %2$s.</string>
 </resources>

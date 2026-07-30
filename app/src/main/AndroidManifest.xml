@@ -11,13 +11,6 @@
         android:localeConfig="@xml/locales_config"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
 
-        <!--
-          Maps SDK for Android kräver nyckeln direkt i appen (till skillnad
-          från Routes/Places API som går via backend) — kartritning sker på
-          enheten. Nyckeln läses från local.properties (aldrig committad)
-          via manifestPlaceholders i app/build.gradle.kts. Se KOM_IGANG.md
-          för hur nyckeln skapas och begränsas till just den här appen.
-        -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="${MAPS_API_KEY}" />
@@ -31,6 +24,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <receiver
+            android:name=".notifications.DepartureAlarmReceiver"
+            android:exported="false" />
     </application>
 
 </manifest>
