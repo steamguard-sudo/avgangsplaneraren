@@ -29,3 +29,6 @@ tools/__pycache__/
 # Rådata från Trafikverket (stora filer, ska aldrig committas)
 raw-data/
 *.gpkg
+
+# Android Studios inbyggda AI-agent (Gemini) lämnar spårningsfiler här
+.artifacts/
