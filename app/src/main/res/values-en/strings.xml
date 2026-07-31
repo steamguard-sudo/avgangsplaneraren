@@ -91,4 +91,5 @@
     <string name="notification_channel_description">Reminds you before you need to leave for a calculated trip.</string>
     <string name="notification_title">Time to get ready!</string>
     <string name="notification_text">You need to leave %1$s towards %2$s soon.</string>
+    <string name="select_date_title">Select date</string>
 </resources>

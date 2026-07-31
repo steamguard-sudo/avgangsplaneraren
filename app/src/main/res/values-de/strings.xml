@@ -91,4 +91,5 @@
     <string name="notification_channel_description">Erinnert Sie, bevor Sie für eine berechnete Fahrt losfahren müssen.</string>
     <string name="notification_title">Zeit, sich bereit zu machen!</string>
     <string name="notification_text">Sie müssen bald von %1$s nach %2$s losfahren.</string>
+    <string name="select_date_title">Datum auswählen</string>
 </resources>

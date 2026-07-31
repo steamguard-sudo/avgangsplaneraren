@@ -7,6 +7,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import com.avgangsplaneraren.app.AppLanguageState
 import com.avgangsplaneraren.app.ui.stringResource
 import com.avgangsplaneraren.app.ui.withLocale
@@ -73,7 +74,15 @@ fun ArrivalDateTimePicker(
                     TextButton(onClick = { showDatePicker = false }) { Text(stringResource(R.string.button_cancel)) }
                 }
             ) {
-                DatePicker(state = datePickerState)
+                DatePicker(
+                    state = datePickerState,
+                    title = {
+                        Text(
+                            stringResource(R.string.select_date_title),
+                            modifier = Modifier.padding(start = 24.dp, end = 12.dp, top = 16.dp)
+                        )
+                    }
+                )
             }
         }
     }

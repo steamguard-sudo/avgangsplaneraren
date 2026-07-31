@@ -91,4 +91,5 @@
     <string name="notification_channel_description">Påminner dig innan du måste avgå för en beräknad resa.</string>
     <string name="notification_title">Dags att göra dig redo!</string>
     <string name="notification_text">Du behöver snart avgå från %1$s mot %2$s.</string>
+    <string name="select_date_title">Välj datum</string>
 </resources>
