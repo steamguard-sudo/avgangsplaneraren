@@ -33,8 +33,6 @@
 - Karta (Google Maps SDK).
 - Notiser (`AlarmManager`) som påminner innan avgångstid.
 - Room-databas för sparade resor (separat från rastplatsdatabasen).
-- Hilt-koppling (dependency injection) — biblioteket är med i `build.gradle.kts` men
-  används inte i koden ännu; `PlannerScreen` skapar sina objekt direkt för enkelhetens skull.
 - Riktig datum/tid-väljare i UI:t (just nu hårdkodad till "6 timmar från nu").
 - Backend körs bara lokalt/utveckling just nu — se KOM_IGANG.md avsnitt 3b för deploy.
 

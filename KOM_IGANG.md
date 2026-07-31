@@ -33,7 +33,6 @@ Appen ska starta direkt: ett formulär där du väljer avreseplats/mål bland
 | Karta | ❌ Inte påbörjat | — |
 | Notiser/påminnelser | ❌ Inte påbörjat | — |
 | Sparade resor | ❌ Inte påbörjat | — |
-| Hilt (dependency injection) | ❌ Biblioteket är med i `build.gradle.kts` men används inte än — `PlannerScreen` skapar objekten direkt | — |
 
 ## 3b. Nästa steg: koppla in backend på riktigt
 
@@ -175,8 +174,6 @@ AvgangsplanerarenAndroid/
 5. Karta (Google Maps SDK) som visar rutten och rastplatserna.
 6. Notiser (`AlarmManager`) som påminner innan avgångstid.
 7. Sparade resor (en till Room-tabell, separat från rastplatsdatabasen).
-8. Städa upp med Hilt när antalet manuellt skapade objekt (`remember { ... }`
-   i `PlannerScreen`) börjar kännas rörigt.
 
 Säg till i chatten vilket steg du vill fortsätta med, så bygger jag vidare
 på exakt den delen.

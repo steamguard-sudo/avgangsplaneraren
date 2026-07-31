@@ -421,6 +421,7 @@ function haversineKm(lat1, lon1, lat2, lon2) {
   async function fetchChargingStationsFromOverpass(lat, lon, radiusKm) {
     const radiusMeters = Math.round(radiusKm * 1000);
     const query = `
+
       [out:json][timeout:25];
       (
         node["amenity"="charging_station"](around:${radiusMeters},${lat},${lon});
