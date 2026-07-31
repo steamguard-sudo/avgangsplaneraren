@@ -113,4 +113,6 @@
     <string name="charging_empty">Entlang dieser Route wurden keine Ladestationen gefunden. Das bedeutet meist, dass OpenStreetMap in diesem Gebiet keine kartierten Orte hat — nicht, dass es in Wirklichkeit keine gibt.</string>
     <string name="operator_format">Betreiber: %1$s</string>
     <string name="capacity_format">%1$d Ladepunkte</string>
+    <string name="searching_overnight">Suche nach Übernachtungsplätzen…</string>
+    <string name="searching_charging">Suche nach Ladestationen…</string>
 </resources>

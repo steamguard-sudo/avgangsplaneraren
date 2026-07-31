@@ -113,4 +113,6 @@
     <string name="charging_empty">No charging stations were found along this route. This usually means OpenStreetMap lacks mapped locations in the area, not that none exist in reality.</string>
     <string name="operator_format">Operator: %1$s</string>
     <string name="capacity_format">%1$d charging points</string>
+    <string name="searching_overnight">Searching for overnight spots…</string>
+    <string name="searching_charging">Searching for charging stations…</string>
 </resources>

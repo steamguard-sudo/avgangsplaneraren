@@ -113,4 +113,6 @@
     <string name="charging_empty">Inga laddplatser hittades längs den här rutten. Det betyder oftast att OpenStreetMap saknar kartlagda platser i området, inte att det inte finns några i verkligheten.</string>
     <string name="operator_format">Operatör: %1$s</string>
     <string name="capacity_format">%1$d laddpunkter</string>
+    <string name="searching_overnight">Söker övernattningsplatser…</string>
+    <string name="searching_charging">Söker laddplatser…</string>
 </resources>

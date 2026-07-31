@@ -6,6 +6,11 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -13,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import com.avgangsplaneraren.app.ui.stringResource
 import androidx.compose.ui.unit.dp
@@ -97,6 +103,7 @@ fun PlannerScreen() {
     }
     var canScheduleExactAlarms by remember { mutableStateOf(NotificationScheduler.canScheduleExactAlarms(context)) }
     var notificationScheduledMessage by remember { mutableStateOf<String?>(null) }
+    var searchStatusMessage by remember { mutableStateOf<String?>(null) }
 
     var loadTripCounter by remember { mutableStateOf(0) }
     var showSaveTripDialog by remember { mutableStateOf(false) }
@@ -118,6 +125,8 @@ fun PlannerScreen() {
         SavedTripRepository(SavedTripDatabase.getInstance(context).savedTripDao())
     }
     val savedTrips by savedTripRepository.observeAll().collectAsState(initial = emptyList())
+    val searchingOvernightText = stringResource(R.string.searching_overnight)
+    val searchingChargingText = stringResource(R.string.searching_charging)
 
     LaunchedEffect(Unit) {
         TrafikverketDataSeeder.seedIfNeeded(context, database.restAreaDao())
@@ -422,6 +431,7 @@ fun PlannerScreen() {
                         }
 
                         if (showOvernightSpots) {
+                            searchStatusMessage = searchingOvernightText
                             val types = buildSet {
                                 if (includeCaravanSites) add(OvernightSpotType.CARAVAN_SITE)
                                 if (includeCampSites) add(OvernightSpotType.CAMP_SITE)
@@ -433,16 +443,20 @@ fun PlannerScreen() {
                         }
 
                         if (showChargingStations) {
+                            searchStatusMessage = searchingChargingText
                             val outcome = findChargingStationsAlongRoute(chargingProvider, route)
                             chargingStations = outcome.stations
                             chargingSearchFailed = outcome.hadFailure
                             chargingSearchDone = true
                         }
+
+                        searchStatusMessage = null
                     } catch (e: Exception) {
                         errorMessage = context.withLocale(AppLanguageState.current.value)
                             .getString(R.string.error_calculate_failed, e.message)
                     } finally {
                         isCalculating = false
+                        searchStatusMessage = null
                     }
                 }
             },
@@ -460,6 +474,10 @@ fun PlannerScreen() {
 
         errorMessage?.let {
             Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        }
+
+        searchStatusMessage?.let {
+            BlinkingStatusText(it)
         }
 
         result?.let { departureResult ->
@@ -575,4 +593,24 @@ private suspend fun findChargingStationsAlongRoute(
         seenStations.add(key)
     }
     return ChargingSearchOutcome(dedupedStations, hadFailure)
+}
+
+@Composable
+private fun BlinkingStatusText(text: String) {
+    val infiniteTransition = rememberInfiniteTransition(label = "searchStatusBlink")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0.3f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 700),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "searchStatusAlpha"
+    )
+    Text(
+        text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.alpha(alpha)
+    )
 }
