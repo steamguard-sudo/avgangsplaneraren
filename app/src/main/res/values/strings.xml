@@ -71,6 +71,7 @@
     <string name="detour_normal">Ca %1$d km från rutten</string>
     <string name="type_caravan_site">Husbils-/husvagnsplats</string>
     <string name="type_camp_site">Campingplats</string>
+    <string name="phone_format">📞 %1$s</string>
 
     <!-- RouteMapView -->
     <string name="map_departure">Avresa</string>

@@ -71,6 +71,7 @@
     <string name="detour_normal">Approx. %1$d km from the route</string>
     <string name="type_caravan_site">Motorhome/caravan site</string>
     <string name="type_camp_site">Campsite</string>
+    <string name="phone_format">📞 %1$s</string>
 
     <!-- RouteMapView -->
     <string name="map_departure">Departure</string>

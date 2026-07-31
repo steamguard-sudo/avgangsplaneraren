@@ -275,6 +275,8 @@ async function fetchOvernightFromOverpass(lat, lon, radiusKm, types) {
         allowsCaravan: parseOsmYesNo(el.tags?.caravans),
         allowsMotorhome: parseOsmYesNo(el.tags?.motorhome),
         allowsTent: parseOsmYesNo(el.tags?.tents),
+        // OSM använder både "phone" och "contact:phone" för samma sak.
+                   phone: el.tags?.phone || el.tags?.["contact:phone"] || null,
         // Fågelvägen från den sökta ruttpunkten till platsen — INTE
         // körsträcka. En sjö eller omväg kan göra den verkliga omvägen
         // betydligt längre än detta tal, men det ger ändå en fingervisning

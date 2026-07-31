@@ -4,7 +4,6 @@ import kotlinx.serialization.Serializable
 import retrofit2.http.GET
 import retrofit2.http.Query
 
-/** Anropar ERT EGET backend (se backend/server.js), inte Overpass API direkt. */
 interface BackendOvernightApi {
 
     @GET("overnight")
@@ -32,5 +31,6 @@ data class OvernightSpotDto(
     val allowsCaravan: Boolean? = null,
     val allowsMotorhome: Boolean? = null,
     val allowsTent: Boolean? = null,
-    val distanceFromRouteKm: Double = 0.0
+    val distanceFromRouteKm: Double = 0.0,
+    val phone: String? = null
 )

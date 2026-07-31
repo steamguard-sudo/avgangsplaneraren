@@ -8,15 +8,6 @@ import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFact
 import okhttp3.MediaType.Companion.toMediaType
 import retrofit2.Retrofit
 
-/**
- * Riktig implementation av [OvernightSpotProvider], via backend/server.js
- * (som i sin tur anropar OpenStreetMaps Overpass API och cachar svaret).
- *
- * Kastar vidare eventuella fel istället för att tysta ner dem — anroparen
- * (se `findOvernightSpotsAlongRoute` i PlannerScreen) behöver kunna skilja
- * på "sökningen lyckades men inget hittades" och "sökningen misslyckades
- * (t.ex. Overpass överbelastad)", för att kunna visa rätt meddelande.
- */
 class OverpassOvernightRepository(baseUrl: String) : OvernightSpotProvider {
 
     private val api: BackendOvernightApi = Retrofit.Builder()
@@ -47,7 +38,8 @@ class OverpassOvernightRepository(baseUrl: String) : OvernightSpotProvider {
                 allowsCaravan = dto.allowsCaravan,
                 allowsMotorhome = dto.allowsMotorhome,
                 allowsTent = dto.allowsTent,
-                distanceFromRouteKm = dto.distanceFromRouteKm
+                distanceFromRouteKm = dto.distanceFromRouteKm,
+                phoneNumber = dto.phone
             )
         }
     }

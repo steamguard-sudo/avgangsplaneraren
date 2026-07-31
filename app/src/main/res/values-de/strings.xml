@@ -71,6 +71,7 @@
     <string name="detour_normal">Ca. %1$d km von der Route entfernt</string>
     <string name="type_caravan_site">Wohnmobil-/Wohnwagenstellplatz</string>
     <string name="type_camp_site">Campingplatz</string>
+    <string name="phone_format">📞 %1$s</string>
 
     <!-- RouteMapView -->
     <string name="map_departure">Abfahrt</string>

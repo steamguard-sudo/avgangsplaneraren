@@ -1,9 +1,13 @@
 package com.avgangsplaneraren.app.ui.board
 
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import com.avgangsplaneraren.app.ui.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -47,6 +51,8 @@ fun OvernightSpotsSection(spots: List<OvernightSpot>, searchDone: Boolean, searc
         val caravanLabel = stringResource(R.string.vehicle_caravan)
         val motorhomeLabel = stringResource(R.string.vehicle_motorhome)
         val tentLabel = stringResource(R.string.vehicle_tent)
+        val phoneFormat = stringResource(R.string.phone_format)
+        val context = LocalContext.current
 
         spots.forEach { spot ->
             Card(
@@ -73,10 +79,27 @@ fun OvernightSpotsSection(spots: List<OvernightSpot>, searchDone: Boolean, searc
                     }
                     Text(feeText, style = MaterialTheme.typography.labelSmall)
 
+                    spot.phoneNumber?.let { phone ->
+                        Text(
+                            String.format(phoneFormat, phone),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.clickable {
+                                val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))
+                                context.startActivity(intent)
+                            }
+                        )
+                    }
+
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         VehicleBadge(caravanLabel, spot.allowsCaravan)
                         VehicleBadge(motorhomeLabel, spot.allowsMotorhome)
+                    }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.padding(top = 4.dp)
+                    ) {
                         VehicleBadge(tentLabel, spot.allowsTent)
                     }
                 }
