@@ -24,6 +24,7 @@ import com.avgangsplaneraren.app.data.directions.AppConfig
 import com.avgangsplaneraren.app.data.directions.GooglePlacesRepository
 import com.avgangsplaneraren.app.data.directions.GoogleRoutesRepository
 import com.avgangsplaneraren.app.data.directions.RouteEstimator
+import com.avgangsplaneraren.app.data.osm.OverpassChargingRepository
 import com.avgangsplaneraren.app.data.osm.OverpassOvernightRepository
 import com.avgangsplaneraren.app.data.trafikverket.TrafikverketDataSeeder
 import com.avgangsplaneraren.app.data.trafikverket.TrafikverketDatabase
@@ -31,6 +32,8 @@ import com.avgangsplaneraren.app.data.trafikverket.TrafikverketRestStopRepositor
 import com.avgangsplaneraren.app.data.trips.SavedTripDatabase
 import com.avgangsplaneraren.app.data.trips.SavedTripRepository
 import com.avgangsplaneraren.app.domain.CalculateDeparture
+import com.avgangsplaneraren.app.domain.ChargingStation
+import com.avgangsplaneraren.app.domain.ChargingStationProvider
 import com.avgangsplaneraren.app.domain.Coordinates
 import com.avgangsplaneraren.app.domain.DepartureResult
 import com.avgangsplaneraren.app.domain.OvernightSpot
@@ -40,6 +43,7 @@ import com.avgangsplaneraren.app.domain.RouteInfo
 import com.avgangsplaneraren.app.domain.SavedTrip
 import com.avgangsplaneraren.app.domain.TripInput
 import com.avgangsplaneraren.app.notifications.NotificationScheduler
+import com.avgangsplaneraren.app.ui.board.ChargingStationsSection
 import com.avgangsplaneraren.app.ui.board.DepartureBoard
 import com.avgangsplaneraren.app.ui.board.OvernightSpotsSection
 import com.avgangsplaneraren.app.ui.map.RouteMapView
@@ -72,6 +76,10 @@ fun PlannerScreen() {
     var overnightSpots by remember { mutableStateOf<List<OvernightSpot>>(emptyList()) }
     var overnightSearchDone by remember { mutableStateOf(false) }
     var overnightSearchFailed by remember { mutableStateOf(false) }
+    var showChargingStations by remember { mutableStateOf(false) }
+    var chargingStations by remember { mutableStateOf<List<ChargingStation>>(emptyList()) }
+    var chargingSearchDone by remember { mutableStateOf(false) }
+    var chargingSearchFailed by remember { mutableStateOf(false) }
     var isSeeding by remember { mutableStateOf(true) }
     var isCalculating by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -102,6 +110,7 @@ fun PlannerScreen() {
         GoogleRoutesRepository(baseUrl = AppConfig.BACKEND_BASE_URL, fallback = RouteEstimator())
     }
     val overnightProvider = remember { OverpassOvernightRepository(baseUrl = AppConfig.BACKEND_BASE_URL) }
+    val chargingProvider = remember { OverpassChargingRepository(baseUrl = AppConfig.BACKEND_BASE_URL) }
     val database = remember { TrafikverketDatabase.getInstance(context) }
     val restStopRepository = remember { TrafikverketRestStopRepository(database.restAreaDao()) }
     val calculator = remember { CalculateDeparture(restStopProvider = restStopRepository) }
@@ -211,6 +220,11 @@ fun PlannerScreen() {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Checkbox(checked = showOvernightSpots, onCheckedChange = { showOvernightSpots = it })
             Text(stringResource(R.string.checkbox_show_overnight))
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(checked = showChargingStations, onCheckedChange = { showChargingStations = it })
+            Text(stringResource(R.string.checkbox_show_charging))
         }
 
         if (showOvernightSpots) {
@@ -353,6 +367,9 @@ fun PlannerScreen() {
                 overnightSpots = emptyList()
                 overnightSearchDone = false
                 overnightSearchFailed = false
+                chargingStations = emptyList()
+                chargingSearchDone = false
+                chargingSearchFailed = false
                 notificationScheduledMessage = null
                 coroutineScope.launch {
                     try {
@@ -414,6 +431,13 @@ fun PlannerScreen() {
                             overnightSearchFailed = outcome.hadFailure
                             overnightSearchDone = true
                         }
+
+                        if (showChargingStations) {
+                            val outcome = findChargingStationsAlongRoute(chargingProvider, route)
+                            chargingStations = outcome.stations
+                            chargingSearchFailed = outcome.hadFailure
+                            chargingSearchDone = true
+                        }
                     } catch (e: Exception) {
                         errorMessage = context.withLocale(AppLanguageState.current.value)
                             .getString(R.string.error_calculate_failed, e.message)
@@ -455,6 +479,14 @@ fun PlannerScreen() {
                 spots = overnightSpots,
                 searchDone = overnightSearchDone,
                 searchFailed = overnightSearchFailed
+            )
+        }
+
+        if (showChargingStations) {
+            ChargingStationsSection(
+                stations = chargingStations,
+                searchDone = chargingSearchDone,
+                searchFailed = chargingSearchFailed
             )
         }
     }
@@ -501,4 +533,45 @@ private suspend fun findOvernightSpotsAlongRoute(
         seen.add(key)
     }
     return OvernightSearchOutcome(deduped, hadFailure)
+}
+
+private data class ChargingSearchOutcome(
+    val stations: List<ChargingStation>,
+    val hadFailure: Boolean
+)
+
+private suspend fun findChargingStationsAlongRoute(
+    provider: ChargingStationProvider,
+    route: RouteInfo,
+    maxPerPoint: Int = 4
+): ChargingSearchOutcome {
+    val line = route.polyline
+    if (line.isEmpty()) return ChargingSearchOutcome(emptyList(), hadFailure = false)
+
+    val numPoints = (route.distanceKm / 150).coerceIn(3, 8)
+    val fractions = (1..numPoints).map { it.toDouble() / (numPoints + 1) }
+    val allStations = mutableListOf<ChargingStation>()
+    var hadFailure = false
+
+    for (fraction in fractions) {
+        val index = (fraction * (line.size - 1)).toInt().coerceIn(0, line.size - 1)
+        val point = line[index]
+        val distanceFromStartKm = (route.distanceKm * fraction).toInt()
+        try {
+            val stationsAtPoint = provider.candidatesNear(
+                point = point,
+                distanceFromStartKm = distanceFromStartKm
+            )
+            allStations += stationsAtPoint.take(maxPerPoint)
+        } catch (e: Exception) {
+            hadFailure = true
+        }
+    }
+
+    val seenStations = mutableSetOf<String>()
+    val dedupedStations = allStations.filter { station ->
+        val key = "${station.name}:${(station.latitude * 100).toInt()}:${(station.longitude * 100).toInt()}"
+        seenStations.add(key)
+    }
+    return ChargingSearchOutcome(dedupedStations, hadFailure)
 }

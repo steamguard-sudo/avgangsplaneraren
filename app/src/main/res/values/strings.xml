@@ -103,4 +103,13 @@
     <string name="delete_trip_confirm_title">Ta bort sparad resa?</string>
     <string name="delete_trip_confirm_text">Är du säker på att du vill ta bort "%1$s"?</string>
     <string name="button_delete">Ta bort</string>
+    <!-- Laddplatser -->
+    <string name="checkbox_show_charging">Visa laddplatser (elbil)</string>
+    <string name="charging_title">Laddplatser i närheten</string>
+    <string name="charging_source">Källa: OpenStreetMap-communityn — dubbelkolla alltid kontaktinfo/kompatibilitet innan du kör dit.</string>
+    <string name="charging_failed_all">Kunde inte söka just nu — OpenStreetMaps sökserver verkar vara överbelastad. Försök igen om en liten stund.</string>
+    <string name="charging_failed_partial">Sökningen lyckades bara delvis (servern var överbelastad på vissa delsträckor) — listan nedan kan vara ofullständig.</string>
+    <string name="charging_empty">Inga laddplatser hittades längs den här rutten. Det betyder oftast att OpenStreetMap saknar kartlagda platser i området, inte att det inte finns några i verkligheten.</string>
+    <string name="operator_format">Operatör: %1$s</string>
+    <string name="capacity_format">%1$d laddpunkter</string>
 </resources>

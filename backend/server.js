@@ -171,6 +171,34 @@ app.get("/overnight", async (req, res) => {
     res.status(502).json({ error: "Kunde inte hämta övernattningsplatser just nu" });
   }
 });
+app.get("/charging", async (req, res) => {
+  const lat = parseFloat(req.query.lat);
+  const lon = parseFloat(req.query.lon);
+  const radiusKm = parseFloat(req.query.radiusKm) || 40;
+
+  if (Number.isNaN(lat) || Number.isNaN(lon)) {
+    return res.status(400).json({ error: "lat och lon krävs som tal" });
+  }
+
+  const key = `charging:${roundCoord(lat)},${roundCoord(lon)}:${radiusKm}`;
+  const cached = cache.get(key, OVERNIGHT_CACHE_TTL_MS);
+  if (cached) {
+    return res.json({ ...cached, cached: true });
+  }
+
+  try {
+    const result = await fetchChargingStationsFromOverpass(lat, lon, radiusKm);
+    cache.set(key, result);
+    res.json({ ...result, cached: false });
+  } catch (err) {
+    console.error(
+      "Fel vid anrop mot Overpass API (laddplatser, alla speglar misslyckades):",
+      err.message,
+      err.cause ? `(orsak: ${err.cause})` : ""
+    );
+    res.status(502).json({ error: "Kunde inte hämta laddplatser just nu" });
+  }
+});
 
 async function fetchAutocompleteFromGoogle(query) {
   // Places API (New) — Autocomplete. Kräver att "Places API (New)" är
@@ -388,6 +416,71 @@ function haversineKm(lat1, lon1, lat2, lon2) {
     Math.sin(dLat / 2) ** 2 +
     Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+  async function fetchChargingStationsFromOverpass(lat, lon, radiusKm) {
+    const radiusMeters = Math.round(radiusKm * 1000);
+    const query = `
+      [out:json][timeout:25];
+      (
+        node["amenity"="charging_station"](around:${radiusMeters},${lat},${lon});
+      );
+      out body;
+    `;
+
+    const endpoints = [
+      "https://overpass-api.de/api/interpreter",
+      "https://overpass.kumi.systems/api/interpreter",
+    ];
+
+    let lastError;
+    for (const endpoint of endpoints) {
+      try {
+        const json = await postOverpassQuery(endpoint, query);
+        const rawStations = (json.elements || []).map((el) => ({
+          id: String(el.id),
+          name: el.tags?.name || null,
+          lat: el.lat,
+          lon: el.lon,
+          operator: el.tags?.operator || el.tags?.network || null,
+          capacity: el.tags?.capacity ? parseInt(el.tags.capacity, 10) || null : null,
+          hasFee: el.tags?.fee ? el.tags.fee === "yes" : null,
+          phone: el.tags?.phone || el.tags?.["contact:phone"] || null,
+          distanceFromRouteKm: Math.round(haversineKm(lat, lon, el.lat, el.lon) * 10) / 10,
+        }));
+        return { stations: dedupeAndRankChargingStations(rawStations) };
+      } catch (err) {
+        console.error(
+          `Overpass-anrop (laddplatser) mot ${endpoint} misslyckades:`,
+          err.message,
+          err.cause ? `(orsak: ${err.cause})` : ""
+        );
+        lastError = err;
+      }
+    }
+
+    throw lastError;
+  }
+
+  function dedupeAndRankChargingStations(stations) {
+    const MIN_DISTANCE_KM = 1.0;
+    const MAX_RESULTS = 15;
+
+    const sorted = [...stations].sort((a, b) => (b.name ? 1 : 0) - (a.name ? 1 : 0));
+    const kept = [];
+
+    for (const station of sorted) {
+      const tooCloseToExisting = kept.some(
+        (k) => haversineKm(k.lat, k.lon, station.lat, station.lon) < MIN_DISTANCE_KM
+      );
+      if (!tooCloseToExisting) {
+        kept.push(station);
+      }
+    }
+
+    const byDistance = [...kept].sort((a, b) => a.distanceFromRouteKm - b.distanceFromRouteKm);
+    return byDistance.slice(0, MAX_RESULTS);
+  }
 }
 
 async function fetchRouteFromGoogle(fromLat, fromLon, toLat, toLon) {
