@@ -4,22 +4,26 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.res.stringResource
+import com.avgangsplaneraren.app.AppLanguageState
+import com.avgangsplaneraren.app.ui.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.avgangsplaneraren.app.R
 import com.avgangsplaneraren.app.domain.DepartureResult
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
 @Composable
 fun DepartureBoard(result: DepartureResult) {
-    val locale = LocalConfiguration.current.locales[0]
-    val dateFormatter = remember(locale) { DateTimeFormatter.ofPattern("EEEE d MMMM", locale) }
+    val languageTag by AppLanguageState.current
+    val dateFormatter = remember(languageTag) {
+        DateTimeFormatter.ofPattern("EEEE d MMMM", Locale(languageTag))
+    }
 
     Column(
         modifier = Modifier

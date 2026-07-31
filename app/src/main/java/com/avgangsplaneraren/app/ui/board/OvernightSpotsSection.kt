@@ -4,26 +4,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
+import com.avgangsplaneraren.app.ui.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.avgangsplaneraren.app.R
 import com.avgangsplaneraren.app.domain.OvernightSpot
 
-/**
- * Visar övernattningsförslag längs rutten (husbil/husvagn/tältplats),
- * tydligt separerat från rastplatserna och märkt med källa — dessa kommer
- * från OpenStreetMap, inte Trafikverket, och kvalitet/täckning kan variera
- * mer eftersom det är community-underhållen data.
- *
- * @param searchDone true om en sökning faktiskt kördes (oavsett resultat) —
- *   används för att skilja på "ingen sökning gjord än" (visa ingenting) och
- *   "sökning gjord men inget hittades" (visa ett tydligt meddelande, så det
- *   inte ser ut som ett fel).
- * @param searchFailed true om minst ett sökanrop misslyckades (t.ex. Overpass
- *   överbelastad) — skiljer "servern svarade inte" från "inga platser finns
- *   i området", som annars skulle se identiska ut för användaren.
- */
 @Composable
 fun OvernightSpotsSection(spots: List<OvernightSpot>, searchDone: Boolean, searchFailed: Boolean = false) {
     if (!searchDone) return
@@ -99,11 +85,6 @@ fun OvernightSpotsSection(spots: List<OvernightSpot>, searchDone: Boolean, searc
     }
 }
 
-/**
- * Visar om ett ekipage är välkommet med tre lägen: Ja (grönt), Nej (rött
- * genomstruket), eller Okänt (grått, om OSM saknar uppgiften — vanligt,
- * se kommentaren i [com.avgangsplaneraren.app.domain.OvernightSpot]).
- */
 @Composable
 private fun VehicleBadge(label: String, allowed: Boolean?) {
     val (text, color) = when (allowed) {
@@ -118,13 +99,6 @@ private fun VehicleBadge(label: String, allowed: Boolean?) {
     )
 }
 
-/**
- * Visar avståndet (fågelvägen, inte körsträcka) från rutten till platsen,
- * med en tydlig varningsfärg om det är så pass långt att det sannolikt
- * innebär en omväg att köra dit — sökningen letar inom en relativt bred
- * radie (upp till 40 km), och en sjö eller omväg kan göra den verkliga
- * avvikelsen längre än fågelvägen antyder.
- */
 @Composable
 private fun DetourText(distanceFromRouteKm: Double) {
     val isLikelyDetour = distanceFromRouteKm > 15.0

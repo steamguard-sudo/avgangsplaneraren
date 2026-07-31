@@ -14,10 +14,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
+import com.avgangsplaneraren.app.ui.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.avgangsplaneraren.app.R
+import com.avgangsplaneraren.app.AppLanguageState
+import com.avgangsplaneraren.app.ui.withLocale
 import com.avgangsplaneraren.app.data.directions.AppConfig
 import com.avgangsplaneraren.app.data.directions.GooglePlacesRepository
 import com.avgangsplaneraren.app.data.directions.GoogleRoutesRepository
@@ -306,7 +308,7 @@ fun PlannerScreen() {
                                 canScheduleExactAlarms = scheduled || NotificationScheduler.canScheduleExactAlarms(context)
                                 notificationScheduledMessage = if (scheduled) {
                                     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
-                                    context.getString(
+                                    context.withLocale(AppLanguageState.current.value).getString(
                                         R.string.notification_scheduled_confirmation,
                                         triggerTime.format(timeFormatter)
                                     )
@@ -327,7 +329,8 @@ fun PlannerScreen() {
                             overnightSearchDone = true
                         }
                     } catch (e: Exception) {
-                        errorMessage = context.getString(R.string.error_calculate_failed, e.message)
+                        errorMessage = context.withLocale(AppLanguageState.current.value)
+                            .getString(R.string.error_calculate_failed, e.message)
                     } finally {
                         isCalculating = false
                     }

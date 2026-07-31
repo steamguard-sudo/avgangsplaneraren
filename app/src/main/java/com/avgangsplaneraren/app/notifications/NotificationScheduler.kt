@@ -7,7 +7,9 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import com.avgangsplaneraren.app.AppLanguageState
 import com.avgangsplaneraren.app.R
+import com.avgangsplaneraren.app.ui.withLocale
 
 object NotificationScheduler {
 
@@ -17,13 +19,14 @@ object NotificationScheduler {
     fun ensureChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
 
+        val localizedContext = context.withLocale(AppLanguageState.currentTagSync(context))
         val manager = context.getSystemService(NotificationManager::class.java)
         val channel = NotificationChannel(
             CHANNEL_ID,
-            context.getString(R.string.notification_channel_name),
+            localizedContext.getString(R.string.notification_channel_name),
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
-            description = context.getString(R.string.notification_channel_description)
+            description = localizedContext.getString(R.string.notification_channel_description)
         }
         manager.createNotificationChannel(channel)
     }

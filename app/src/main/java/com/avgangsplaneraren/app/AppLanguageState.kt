@@ -21,4 +21,9 @@ object AppLanguageState {
             .putString(KEY_LANGUAGE, languageTag)
             .apply()
     }
+
+    fun currentTagSync(context: Context): String {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getString(KEY_LANGUAGE, "sv") ?: "sv"
+    }
 }

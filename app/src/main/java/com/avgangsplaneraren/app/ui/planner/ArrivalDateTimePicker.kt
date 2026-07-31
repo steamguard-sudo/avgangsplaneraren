@@ -5,24 +5,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.res.stringResource
+import com.avgangsplaneraren.app.AppLanguageState
+import com.avgangsplaneraren.app.ui.stringResource
 import com.avgangsplaneraren.app.R
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
-/**
- * Väljare för önskad ankomsttid: en knapp som visar nuvarande val, och som
- * öppnar först en datumväljare och sedan en tidväljare (Material 3) när man
- * trycker på den. Ersätter den tidigare hårdkodade "6 timmar från nu".
- *
- * Datumtexten formateras enligt appens aktuella språk (via [LanguageSelector])
- * istället för att alltid vara på svenska, så t.ex. månadsnamn följer med
- * när användaren byter till engelska/tyska.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ArrivalDateTimePicker(
@@ -33,9 +25,9 @@ fun ArrivalDateTimePicker(
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
 
-    val locale = LocalConfiguration.current.locales[0]
-    val displayFormatter = remember(locale) {
-        DateTimeFormatter.ofPattern("EEEE d MMMM 'kl.' HH:mm", locale)
+    val languageTag by AppLanguageState.current
+    val displayFormatter = remember(languageTag) {
+        DateTimeFormatter.ofPattern("EEEE d MMMM 'kl.' HH:mm", Locale(languageTag))
     }
 
     Column(modifier = modifier) {
@@ -60,8 +52,6 @@ fun ArrivalDateTimePicker(
             confirmButton = {
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
-                        // Compose DatePicker jobbar i UTC-epokmillisekunder för
-                        // "bara ett datum", oberoende av enhetens tidszon.
                         val newDate = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
                         onValueChange(LocalDateTime.of(newDate, value.toLocalTime()))
                     }

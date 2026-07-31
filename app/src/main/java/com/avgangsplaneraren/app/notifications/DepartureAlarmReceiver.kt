@@ -8,8 +8,10 @@ import android.content.pm.PackageManager
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import com.avgangsplaneraren.app.AppLanguageState
 import com.avgangsplaneraren.app.MainActivity
 import com.avgangsplaneraren.app.R
+import com.avgangsplaneraren.app.ui.withLocale
 
 class DepartureAlarmReceiver : BroadcastReceiver() {
 
@@ -22,6 +24,7 @@ class DepartureAlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val fromPlace = intent.getStringExtra(EXTRA_FROM).orEmpty()
         val toPlace = intent.getStringExtra(EXTRA_TO).orEmpty()
+        val localizedContext = context.withLocale(AppLanguageState.currentTagSync(context))
 
         NotificationScheduler.ensureChannel(context)
 
@@ -35,11 +38,11 @@ class DepartureAlarmReceiver : BroadcastReceiver() {
 
         val notification = NotificationCompat.Builder(context, NotificationScheduler.channelId())
             .setSmallIcon(android.R.drawable.ic_menu_directions)
-            .setContentTitle(context.getString(R.string.notification_title))
-            .setContentText(context.getString(R.string.notification_text, fromPlace, toPlace))
+            .setContentTitle(localizedContext.getString(R.string.notification_title))
+            .setContentText(localizedContext.getString(R.string.notification_text, fromPlace, toPlace))
             .setStyle(
                 NotificationCompat.BigTextStyle()
-                    .bigText(context.getString(R.string.notification_text, fromPlace, toPlace))
+                    .bigText(localizedContext.getString(R.string.notification_text, fromPlace, toPlace))
             )
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
