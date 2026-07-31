@@ -222,11 +222,6 @@ fun PlannerScreen() {
             Text(stringResource(R.string.checkbox_show_overnight))
         }
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = showChargingStations, onCheckedChange = { showChargingStations = it })
-            Text(stringResource(R.string.checkbox_show_charging))
-        }
-
         if (showOvernightSpots) {
             Column(modifier = Modifier.padding(start = 40.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -252,6 +247,11 @@ fun PlannerScreen() {
                     style = MaterialTheme.typography.labelSmall
                 )
             }
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(checked = showChargingStations, onCheckedChange = { showChargingStations = it })
+            Text(stringResource(R.string.checkbox_show_charging))
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
