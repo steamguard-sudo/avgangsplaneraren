@@ -92,4 +92,15 @@
     <string name="notification_title">Zeit, sich bereit zu machen!</string>
     <string name="notification_text">Sie müssen bald von %1$s nach %2$s losfahren.</string>
     <string name="select_date_title">Datum auswählen</string>
+    <!-- Gespeicherte Fahrten -->
+    <string name="saved_trips_title">Gespeicherte Fahrten</string>
+    <string name="no_saved_trips">Noch keine gespeicherten Fahrten.</string>
+    <string name="button_save_trip">Fahrt speichern</string>
+    <string name="save_trip_dialog_title">Fahrt speichern</string>
+    <string name="save_trip_label_hint">Name der Fahrt</string>
+    <string name="default_trip_label_format">%1$s → %2$s</string>
+    <string name="button_save">Speichern</string>
+    <string name="delete_trip_confirm_title">Gespeicherte Fahrt löschen?</string>
+    <string name="delete_trip_confirm_text">Möchten Sie "%1$s" wirklich löschen?</string>
+    <string name="button_delete">Löschen</string>
 </resources>

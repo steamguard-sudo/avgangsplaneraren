@@ -28,6 +28,8 @@ import com.avgangsplaneraren.app.data.osm.OverpassOvernightRepository
 import com.avgangsplaneraren.app.data.trafikverket.TrafikverketDataSeeder
 import com.avgangsplaneraren.app.data.trafikverket.TrafikverketDatabase
 import com.avgangsplaneraren.app.data.trafikverket.TrafikverketRestStopRepository
+import com.avgangsplaneraren.app.data.trips.SavedTripDatabase
+import com.avgangsplaneraren.app.data.trips.SavedTripRepository
 import com.avgangsplaneraren.app.domain.CalculateDeparture
 import com.avgangsplaneraren.app.domain.Coordinates
 import com.avgangsplaneraren.app.domain.DepartureResult
@@ -35,6 +37,7 @@ import com.avgangsplaneraren.app.domain.OvernightSpot
 import com.avgangsplaneraren.app.domain.OvernightSpotProvider
 import com.avgangsplaneraren.app.domain.OvernightSpotType
 import com.avgangsplaneraren.app.domain.RouteInfo
+import com.avgangsplaneraren.app.domain.SavedTrip
 import com.avgangsplaneraren.app.domain.TripInput
 import com.avgangsplaneraren.app.notifications.NotificationScheduler
 import com.avgangsplaneraren.app.ui.board.DepartureBoard
@@ -87,6 +90,9 @@ fun PlannerScreen() {
     var canScheduleExactAlarms by remember { mutableStateOf(NotificationScheduler.canScheduleExactAlarms(context)) }
     var notificationScheduledMessage by remember { mutableStateOf<String?>(null) }
 
+    var loadTripCounter by remember { mutableStateOf(0) }
+    var showSaveTripDialog by remember { mutableStateOf(false) }
+
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted -> notificationPermissionGranted = granted }
@@ -99,6 +105,10 @@ fun PlannerScreen() {
     val database = remember { TrafikverketDatabase.getInstance(context) }
     val restStopRepository = remember { TrafikverketRestStopRepository(database.restAreaDao()) }
     val calculator = remember { CalculateDeparture(restStopProvider = restStopRepository) }
+    val savedTripRepository = remember {
+        SavedTripRepository(SavedTripDatabase.getInstance(context).savedTripDao())
+    }
+    val savedTrips by savedTripRepository.observeAll().collectAsState(initial = emptyList())
 
     LaunchedEffect(Unit) {
         TrafikverketDataSeeder.seedIfNeeded(context, database.restAreaDao())
@@ -122,46 +132,76 @@ fun PlannerScreen() {
             style = MaterialTheme.typography.bodyMedium
         )
 
-        PlaceAutocompleteField(
-            label = stringResource(R.string.label_from),
-            placeProvider = placeProvider,
-            onPlaceSelected = { name, coordinates ->
-                fromName = name
-                fromCoord = coordinates
+        SavedTripsSection(
+            trips = savedTrips,
+            onTripSelected = { trip ->
+                fromName = trip.fromPlace
+                fromCoord = trip.fromCoordinates
+                toName = trip.toPlace
+                toCoord = trip.toCoordinates
+                bufferMinutes = trip.bufferMinutes
+                minutesPerBreak = trip.minutesPerBreak
+                onlyAmenities = trip.onlyStopsWithTableAndBench
+                showOvernightSpots = trip.showOvernightSpots
+                includeCaravanSites = trip.includeCaravanSites
+                includeCampSites = trip.includeCampSites
+                campingStopHours = trip.campingStopHours
+                campingStopExtraMinutes = trip.campingStopExtraMinutes
+                notifyEnabled = trip.notifyEnabled
+                notifyMinutesBefore = trip.notifyMinutesBefore
+                loadTripCounter++
             },
-            onCleared = {
-                fromName = null
-                fromCoord = null
+            onTripDeleted = { trip ->
+                coroutineScope.launch { savedTripRepository.delete(trip) }
             }
         )
 
-        PlaceAutocompleteField(
-            label = stringResource(R.string.label_to),
-            placeProvider = placeProvider,
-            onPlaceSelected = { name, coordinates ->
-                toName = name
-                toCoord = coordinates
-            },
-            onCleared = {
-                toName = null
-                toCoord = null
-            }
-        )
+        key(loadTripCounter) {
+            PlaceAutocompleteField(
+                label = stringResource(R.string.label_from),
+                placeProvider = placeProvider,
+                initialValue = fromName.orEmpty(),
+                onPlaceSelected = { name, coordinates ->
+                    fromName = name
+                    fromCoord = coordinates
+                },
+                onCleared = {
+                    fromName = null
+                    fromCoord = null
+                }
+            )
+
+            PlaceAutocompleteField(
+                label = stringResource(R.string.label_to),
+                placeProvider = placeProvider,
+                initialValue = toName.orEmpty(),
+                onPlaceSelected = { name, coordinates ->
+                    toName = name
+                    toCoord = coordinates
+                },
+                onCleared = {
+                    toName = null
+                    toCoord = null
+                }
+            )
+        }
 
         ArrivalDateTimePicker(value = arrival, onValueChange = { arrival = it })
 
-        NumberField(
-            value = bufferMinutes,
-            onValueChange = { bufferMinutes = it },
-            label = stringResource(R.string.label_buffer_minutes)
-        )
+        key(loadTripCounter) {
+            NumberField(
+                value = bufferMinutes,
+                onValueChange = { bufferMinutes = it },
+                label = stringResource(R.string.label_buffer_minutes)
+            )
 
-        NumberField(
-            value = minutesPerBreak,
-            onValueChange = { minutesPerBreak = it },
-            label = stringResource(R.string.label_minutes_per_break),
-            supportingText = stringResource(R.string.hint_minutes_per_break)
-        )
+            NumberField(
+                value = minutesPerBreak,
+                onValueChange = { minutesPerBreak = it },
+                label = stringResource(R.string.label_minutes_per_break),
+                supportingText = stringResource(R.string.hint_minutes_per_break)
+            )
+        }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             Checkbox(checked = onlyAmenities, onCheckedChange = { onlyAmenities = it })
@@ -221,11 +261,13 @@ fun PlannerScreen() {
 
         if (notifyEnabled) {
             Column(modifier = Modifier.padding(start = 40.dp)) {
-                NumberField(
-                    value = notifyMinutesBefore,
-                    onValueChange = { notifyMinutesBefore = it },
-                    label = stringResource(R.string.label_notify_minutes)
-                )
+                key(loadTripCounter) {
+                    NumberField(
+                        value = notifyMinutesBefore,
+                        onValueChange = { notifyMinutesBefore = it },
+                        label = stringResource(R.string.label_notify_minutes)
+                    )
+                }
 
                 if (!notificationPermissionGranted) {
                     Text(
@@ -252,6 +294,53 @@ fun PlannerScreen() {
                     Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                 }
             }
+        }
+
+        OutlinedButton(
+            enabled = fromCoord != null && toCoord != null,
+            onClick = { showSaveTripDialog = true },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(stringResource(R.string.button_save_trip))
+        }
+
+        if (showSaveTripDialog) {
+            SaveTripDialog(
+                defaultLabel = stringResource(
+                    R.string.default_trip_label_format,
+                    fromName.orEmpty(),
+                    toName.orEmpty()
+                ),
+                onConfirm = { label ->
+                    val from = fromCoord
+                    val to = toCoord
+                    if (from != null && to != null) {
+                        coroutineScope.launch {
+                            savedTripRepository.save(
+                                SavedTrip(
+                                    label = label,
+                                    fromPlace = fromName.orEmpty(),
+                                    fromCoordinates = from,
+                                    toPlace = toName.orEmpty(),
+                                    toCoordinates = to,
+                                    bufferMinutes = bufferMinutes,
+                                    minutesPerBreak = minutesPerBreak,
+                                    onlyStopsWithTableAndBench = onlyAmenities,
+                                    showOvernightSpots = showOvernightSpots,
+                                    includeCaravanSites = includeCaravanSites,
+                                    includeCampSites = includeCampSites,
+                                    campingStopHours = campingStopHours,
+                                    campingStopExtraMinutes = campingStopExtraMinutes,
+                                    notifyEnabled = notifyEnabled,
+                                    notifyMinutesBefore = notifyMinutesBefore
+                                )
+                            )
+                        }
+                    }
+                    showSaveTripDialog = false
+                },
+                onDismiss = { showSaveTripDialog = false }
+            )
         }
 
         Button(

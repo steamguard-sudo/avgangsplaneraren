@@ -92,4 +92,15 @@
     <string name="notification_title">Dags att göra dig redo!</string>
     <string name="notification_text">Du behöver snart avgå från %1$s mot %2$s.</string>
     <string name="select_date_title">Välj datum</string>
+    <!-- Sparade resor -->
+    <string name="saved_trips_title">Sparade resor</string>
+    <string name="no_saved_trips">Inga sparade resor än.</string>
+    <string name="button_save_trip">Spara resa</string>
+    <string name="save_trip_dialog_title">Spara resa</string>
+    <string name="save_trip_label_hint">Namn på resan</string>
+    <string name="default_trip_label_format">%1$s → %2$s</string>
+    <string name="button_save">Spara</string>
+    <string name="delete_trip_confirm_title">Ta bort sparad resa?</string>
+    <string name="delete_trip_confirm_text">Är du säker på att du vill ta bort "%1$s"?</string>
+    <string name="button_delete">Ta bort</string>
 </resources>

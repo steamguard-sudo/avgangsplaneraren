@@ -22,16 +22,17 @@ fun PlaceAutocompleteField(
     onPlaceSelected: (name: String, coordinates: Coordinates) -> Unit,
     modifier: Modifier = Modifier,
     debounceMillis: Long = 350,
+    initialValue: String = "",
     onCleared: () -> Unit = {}
 ) {
     val coroutineScope = rememberCoroutineScope()
 
-    var text by remember { mutableStateOf("") }
+    var text by remember { mutableStateOf(initialValue) }
     var suggestions by remember { mutableStateOf<List<PlaceSuggestion>>(emptyList()) }
     var expanded by remember { mutableStateOf(false) }
     var isSearching by remember { mutableStateOf(false) }
     var isResolving by remember { mutableStateOf(false) }
-    var hasSelectedPlace by remember { mutableStateOf(false) }
+    var hasSelectedPlace by remember { mutableStateOf(initialValue.isNotEmpty()) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     val searchFailedText = stringResource(R.string.error_search_failed)
