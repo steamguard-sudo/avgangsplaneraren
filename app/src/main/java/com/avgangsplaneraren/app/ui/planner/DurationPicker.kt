@@ -5,7 +5,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import com.avgangsplaneraren.app.AppLanguageState
 import com.avgangsplaneraren.app.ui.stringResource
+import com.avgangsplaneraren.app.ui.withLocale
 import com.avgangsplaneraren.app.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,23 +40,32 @@ fun DurationPicker(
     }
 
     if (showPicker) {
-        val timePickerState = rememberTimePickerState(
-            initialHour = hours,
-            initialMinute = minutes,
-            is24Hour = true
-        )
-        AlertDialog(
-            onDismissRequest = { showPicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    onDurationChange(timePickerState.hour, timePickerState.minute)
-                    showPicker = false
-                }) { Text(stringResource(R.string.button_done)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showPicker = false }) { Text(stringResource(R.string.button_cancel)) }
-            },
-            text = { TimePicker(state = timePickerState) }
-        )
+        val languageTag by AppLanguageState.current
+        val baseContext = LocalContext.current
+        val localizedContext = remember(languageTag) { baseContext.withLocale(languageTag) }
+
+        CompositionLocalProvider(
+            LocalContext provides localizedContext,
+            LocalConfiguration provides localizedContext.resources.configuration
+        ) {
+            val timePickerState = rememberTimePickerState(
+                initialHour = hours,
+                initialMinute = minutes,
+                is24Hour = true
+            )
+            AlertDialog(
+                onDismissRequest = { showPicker = false },
+                confirmButton = {
+                    TextButton(onClick = {
+                        onDurationChange(timePickerState.hour, timePickerState.minute)
+                        showPicker = false
+                    }) { Text(stringResource(R.string.button_done)) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showPicker = false }) { Text(stringResource(R.string.button_cancel)) }
+                },
+                text = { TimePicker(state = timePickerState) }
+            )
+        }
     }
 }

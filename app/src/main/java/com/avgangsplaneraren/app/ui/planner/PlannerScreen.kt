@@ -150,19 +150,17 @@ fun PlannerScreen() {
 
         ArrivalDateTimePicker(value = arrival, onValueChange = { arrival = it })
 
-        OutlinedTextField(
-            value = bufferMinutes.toString(),
-            onValueChange = { bufferMinutes = it.toIntOrNull() ?: 0 },
-            label = { Text(stringResource(R.string.label_buffer_minutes)) },
-            modifier = Modifier.fillMaxWidth()
+        NumberField(
+            value = bufferMinutes,
+            onValueChange = { bufferMinutes = it },
+            label = stringResource(R.string.label_buffer_minutes)
         )
 
-        OutlinedTextField(
-            value = minutesPerBreak.toString(),
-            onValueChange = { minutesPerBreak = it.toIntOrNull() ?: 0 },
-            label = { Text(stringResource(R.string.label_minutes_per_break)) },
-            supportingText = { Text(stringResource(R.string.hint_minutes_per_break)) },
-            modifier = Modifier.fillMaxWidth()
+        NumberField(
+            value = minutesPerBreak,
+            onValueChange = { minutesPerBreak = it },
+            label = stringResource(R.string.label_minutes_per_break),
+            supportingText = stringResource(R.string.hint_minutes_per_break)
         )
 
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -223,11 +221,10 @@ fun PlannerScreen() {
 
         if (notifyEnabled) {
             Column(modifier = Modifier.padding(start = 40.dp)) {
-                OutlinedTextField(
-                    value = notifyMinutesBefore.toString(),
-                    onValueChange = { notifyMinutesBefore = it.toIntOrNull() ?: 0 },
-                    label = { Text(stringResource(R.string.label_notify_minutes)) },
-                    modifier = Modifier.fillMaxWidth()
+                NumberField(
+                    value = notifyMinutesBefore,
+                    onValueChange = { notifyMinutesBefore = it },
+                    label = stringResource(R.string.label_notify_minutes)
                 )
 
                 if (!notificationPermissionGranted) {

@@ -5,8 +5,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import com.avgangsplaneraren.app.AppLanguageState
 import com.avgangsplaneraren.app.ui.stringResource
+import com.avgangsplaneraren.app.ui.withLocale
 import com.avgangsplaneraren.app.R
 import java.time.Instant
 import java.time.LocalDateTime
@@ -40,56 +43,69 @@ fun ArrivalDateTimePicker(
         }
     }
 
+    val baseContext = LocalContext.current
+    val localizedContext = remember(languageTag) { baseContext.withLocale(languageTag) }
+
     if (showDatePicker) {
-        val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = value
-                .atZone(ZoneOffset.UTC)
-                .toInstant()
-                .toEpochMilli()
-        )
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    datePickerState.selectedDateMillis?.let { millis ->
-                        val newDate = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
-                        onValueChange(LocalDateTime.of(newDate, value.toLocalTime()))
-                    }
-                    showDatePicker = false
-                    showTimePicker = true
-                }) { Text(stringResource(R.string.button_next)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text(stringResource(R.string.button_cancel)) }
-            }
+        CompositionLocalProvider(
+            LocalContext provides localizedContext,
+            LocalConfiguration provides localizedContext.resources.configuration
         ) {
-            DatePicker(state = datePickerState)
+            val datePickerState = rememberDatePickerState(
+                initialSelectedDateMillis = value
+                    .atZone(ZoneOffset.UTC)
+                    .toInstant()
+                    .toEpochMilli()
+            )
+            DatePickerDialog(
+                onDismissRequest = { showDatePicker = false },
+                confirmButton = {
+                    TextButton(onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val newDate = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
+                            onValueChange(LocalDateTime.of(newDate, value.toLocalTime()))
+                        }
+                        showDatePicker = false
+                        showTimePicker = true
+                    }) { Text(stringResource(R.string.button_next)) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDatePicker = false }) { Text(stringResource(R.string.button_cancel)) }
+                }
+            ) {
+                DatePicker(state = datePickerState)
+            }
         }
     }
 
     if (showTimePicker) {
-        val timePickerState = rememberTimePickerState(
-            initialHour = value.hour,
-            initialMinute = value.minute,
-            is24Hour = true
-        )
-        AlertDialog(
-            onDismissRequest = { showTimePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    onValueChange(
-                        LocalDateTime.of(
-                            value.toLocalDate(),
-                            LocalTime.of(timePickerState.hour, timePickerState.minute)
+        CompositionLocalProvider(
+            LocalContext provides localizedContext,
+            LocalConfiguration provides localizedContext.resources.configuration
+        ) {
+            val timePickerState = rememberTimePickerState(
+                initialHour = value.hour,
+                initialMinute = value.minute,
+                is24Hour = true
+            )
+            AlertDialog(
+                onDismissRequest = { showTimePicker = false },
+                confirmButton = {
+                    TextButton(onClick = {
+                        onValueChange(
+                            LocalDateTime.of(
+                                value.toLocalDate(),
+                                LocalTime.of(timePickerState.hour, timePickerState.minute)
+                            )
                         )
-                    )
-                    showTimePicker = false
-                }) { Text(stringResource(R.string.button_done)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showTimePicker = false }) { Text(stringResource(R.string.button_cancel)) }
-            },
-            text = { TimePicker(state = timePickerState) }
-        )
+                        showTimePicker = false
+                    }) { Text(stringResource(R.string.button_done)) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showTimePicker = false }) { Text(stringResource(R.string.button_cancel)) }
+                },
+                text = { TimePicker(state = timePickerState) }
+            )
+        }
     }
 }
