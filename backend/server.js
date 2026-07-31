@@ -482,7 +482,6 @@ function haversineKm(lat1, lon1, lat2, lon2) {
     const byDistance = [...kept].sort((a, b) => a.distanceFromRouteKm - b.distanceFromRouteKm);
     return byDistance.slice(0, MAX_RESULTS);
   }
-}
 
 async function fetchRouteFromGoogle(fromLat, fromLon, toLat, toLon) {
   // Routes API (efterträdaren till Directions API) — se
