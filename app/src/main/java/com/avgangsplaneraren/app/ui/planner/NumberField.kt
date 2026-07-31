@@ -5,6 +5,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -24,6 +25,15 @@ fun NumberField(
     supportingText: String? = null
 ) {
     var fieldValue by remember { mutableStateOf(TextFieldValue(value.toString())) }
+    var isFocused by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isFocused) {
+        if (isFocused) {
+            fieldValue = fieldValue.copy(
+                selection = TextRange(0, fieldValue.text.length)
+            )
+        }
+    }
 
     OutlinedTextField(
         value = fieldValue,
@@ -37,12 +47,6 @@ fun NumberField(
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         modifier = modifier
             .fillMaxWidth()
-            .onFocusChanged { focusState ->
-                if (focusState.isFocused) {
-                    fieldValue = fieldValue.copy(
-                        selection = TextRange(0, fieldValue.text.length)
-                    )
-                }
-            }
+            .onFocusChanged { focusState -> isFocused = focusState.isFocused }
     )
 }
