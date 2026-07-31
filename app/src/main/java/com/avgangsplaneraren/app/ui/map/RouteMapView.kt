@@ -23,6 +23,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.avgangsplaneraren.app.R
+import com.avgangsplaneraren.app.domain.ChargingStation
 import com.avgangsplaneraren.app.domain.Coordinates
 import com.avgangsplaneraren.app.domain.OvernightSpot
 import com.avgangsplaneraren.app.domain.RestStop
@@ -42,6 +43,7 @@ fun RouteMapView(
     toName: String,
     restStops: List<RestStop>,
     overnightSpots: List<OvernightSpot>,
+    chargingStations: List<ChargingStation> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     if (routePoints.size < 2) return
@@ -53,6 +55,7 @@ fun RouteMapView(
     val destinationLabel = stringResource(R.string.map_destination)
     val restStopSnippetFormat = stringResource(R.string.map_rest_stop_snippet)
     val overnightSnippetFormat = stringResource(R.string.map_overnight_snippet)
+    val chargingSnippetFormat = stringResource(R.string.map_charging_snippet)
     val legendText = stringResource(R.string.map_legend)
 
     val mapView = remember {
@@ -87,7 +90,7 @@ fun RouteMapView(
         }
     )
 
-    LaunchedEffect(googleMap, routePoints, restStops, overnightSpots) {
+    LaunchedEffect(googleMap, routePoints, restStops, overnightSpots, chargingStations) {
         val map = googleMap ?: return@LaunchedEffect
         map.clear()
 
@@ -132,6 +135,16 @@ fun RouteMapView(
                     .title(spot.name)
                     .snippet(String.format(overnightSnippetFormat, spot.distanceFromStartKm))
                     .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
+            )
+        }
+
+        chargingStations.forEach { station ->
+            map.addMarker(
+                MarkerOptions()
+                    .position(LatLng(station.latitude, station.longitude))
+                    .title(station.name)
+                    .snippet(String.format(chargingSnippetFormat, station.distanceFromStartKm))
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_YELLOW))
             )
         }
 

@@ -78,7 +78,8 @@
     <string name="map_destination">Destination</string>
     <string name="map_rest_stop_snippet">Rest stop · approx. %1$d km into the trip</string>
     <string name="map_overnight_snippet">Overnight stay · approx. %1$d km into the trip</string>
-    <string name="map_legend">Green = departure · Red = destination · Orange = rest stop · Blue marker = overnight stay</string>
+    <string name="map_charging_snippet">Charging station · approx. %1$d km into the trip</string>
+    <string name="map_legend">Green = departure · Red = destination · Orange = rest stop · Blue marker = overnight stay · Yellow marker = charging station</string>
 
     <!-- Notifications -->
     <string name="checkbox_notify_before">Remind me before departure time</string>

@@ -470,6 +470,7 @@ fun PlannerScreen() {
                 toName = toName.orEmpty(),
                 restStops = departureResult.restStops,
                 overnightSpots = overnightSpots,
+                chargingStations = chargingStations,
                 modifier = Modifier.padding(top = 16.dp)
             )
         }

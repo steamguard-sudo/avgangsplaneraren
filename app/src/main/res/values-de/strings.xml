@@ -78,7 +78,8 @@
     <string name="map_destination">Ziel</string>
     <string name="map_rest_stop_snippet">Rastplatz · ca. %1$d km ab Start</string>
     <string name="map_overnight_snippet">Übernachtung · ca. %1$d km ab Start</string>
-    <string name="map_legend">Grün = Abfahrt · Rot = Ziel · Orange = Rastplatz · Blauer Marker = Übernachtung</string>
+    <string name="map_charging_snippet">Ladestation · ca. %1$d km ab Start</string>
+    <string name="map_legend">Grün = Abfahrt · Rot = Ziel · Orange = Rastplatz · Blauer Marker = Übernachtung · Gelber Marker = Ladestation</string>
 
     <!-- Benachrichtigungen -->
     <string name="checkbox_notify_before">Vor der Abfahrtszeit erinnern</string>

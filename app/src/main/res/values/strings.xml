@@ -78,7 +78,8 @@
     <string name="map_destination">Mål</string>
     <string name="map_rest_stop_snippet">Rastplats · ca %1$d km in på resan</string>
     <string name="map_overnight_snippet">Övernattning · ca %1$d km in på resan</string>
-    <string name="map_legend">Grön = avresa · Röd = mål · Orange = rastplats · Blå markör = övernattning</string>
+    <string name="map_charging_snippet">Laddplats · ca %1$d km in på resan</string>
+    <string name="map_legend">Grön = avresa · Röd = mål · Orange = rastplats · Blå markör = övernattning · Gul markör = laddplats</string>
 
     <!-- Notiser -->
     <string name="checkbox_notify_before">Påminn mig innan avgångstid</string>
