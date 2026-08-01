@@ -115,4 +115,6 @@
     <string name="capacity_format">%1$d charging points</string>
     <string name="searching_overnight">Searching for overnight spots…</string>
     <string name="searching_charging">Searching for charging stations…</string>
+    <string name="segment_label_format">Leg %1$d (%2$d–%3$d km)</string>
+    <string name="searching_segment_format">Searching leg %1$d…</string>
 </resources>

@@ -115,4 +115,6 @@
     <string name="capacity_format">%1$d Ladepunkte</string>
     <string name="searching_overnight">Suche nach Übernachtungsplätzen…</string>
     <string name="searching_charging">Suche nach Ladestationen…</string>
+    <string name="segment_label_format">Abschnitt %1$d (%2$d–%3$d km)</string>
+    <string name="searching_segment_format">Suche Abschnitt %1$d…</string>
 </resources>

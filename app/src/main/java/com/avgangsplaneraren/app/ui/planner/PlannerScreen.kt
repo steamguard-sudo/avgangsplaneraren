@@ -12,6 +12,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -57,6 +58,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlin.math.roundToInt
 
 @Composable
 fun PlannerScreen() {
@@ -89,6 +91,8 @@ fun PlannerScreen() {
     var isSeeding by remember { mutableStateOf(true) }
     var isCalculating by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var selectedSegment by remember { mutableStateOf(1) }
+    var lastRoute by remember { mutableStateOf<RouteInfo?>(null) }
 
     var notifyEnabled by remember { mutableStateOf(false) }
     var notifyMinutesBefore by remember { mutableStateOf(15) }
@@ -134,6 +138,7 @@ fun PlannerScreen() {
     }
 
     val canCalculate = fromCoord != null && toCoord != null && !isSeeding && !isCalculating
+    val numSegments = ((result?.distanceKm ?: 0) / 200.0).roundToInt().coerceIn(1, 6)
 
     Column(
         modifier = Modifier
@@ -380,10 +385,12 @@ fun PlannerScreen() {
                 chargingSearchDone = false
                 chargingSearchFailed = false
                 notificationScheduledMessage = null
+                selectedSegment = 1
                 coroutineScope.launch {
                     try {
                         val route = routeProvider.getRoute(from, to)
                         lastRoutePolyline = route.polyline
+                        lastRoute = route
 
                         val campingStopMinutes = if (showOvernightSpots) {
                             campingStopHours * 60 + campingStopExtraMinutes
@@ -493,6 +500,66 @@ fun PlannerScreen() {
             )
         }
 
+        if (result != null && numSegments > 1 && (showChargingStations || showOvernightSpots)) {
+            val totalDistance = result?.distanceKm ?: 0
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                for (n in 1..numSegments) {
+                    val startKm = ((n - 1).toDouble() * totalDistance / numSegments).roundToInt()
+                    val endKm = (n.toDouble() * totalDistance / numSegments).roundToInt()
+                    FilterChip(
+                        selected = selectedSegment == n,
+                        onClick = {
+                            selectedSegment = n
+                            val route = lastRoute
+                            if (route != null) {
+                                coroutineScope.launch {
+                                    val startFraction = (n - 1).toDouble() / numSegments
+                                    val endFraction = n.toDouble() / numSegments
+                                    val fractionRange = startFraction..endFraction
+                                    searchStatusMessage = context.withLocale(AppLanguageState.current.value)
+                                        .getString(R.string.searching_segment_format, n)
+                                    if (showChargingStations) {
+                                        val outcome = findChargingStationsAlongRoute(
+                                            chargingProvider,
+                                            route,
+                                            fractionRange = fractionRange
+                                        )
+                                        chargingStations = outcome.stations
+                                        chargingSearchFailed = outcome.hadFailure
+                                        chargingSearchDone = true
+                                    }
+                                    if (showOvernightSpots) {
+                                        val types = buildSet {
+                                            if (includeCaravanSites) add(OvernightSpotType.CARAVAN_SITE)
+                                            if (includeCampSites) add(OvernightSpotType.CAMP_SITE)
+                                        }
+                                        val outcome = findOvernightSpotsAlongRoute(
+                                            overnightProvider,
+                                            route,
+                                            types,
+                                            fractionRange = fractionRange
+                                        )
+                                        overnightSpots = outcome.spots
+                                        overnightSearchFailed = outcome.hadFailure
+                                        overnightSearchDone = true
+                                    }
+                                    searchStatusMessage = null
+                                }
+                            }
+                        },
+                        label = {
+                            Text(stringResource(R.string.segment_label_format, n, startKm, endKm))
+                        }
+                    )
+                }
+            }
+        }
+
         if (showOvernightSpots) {
             OvernightSpotsSection(
                 spots = overnightSpots,
@@ -520,13 +587,15 @@ private suspend fun findOvernightSpotsAlongRoute(
     provider: OvernightSpotProvider,
     route: RouteInfo,
     types: Set<OvernightSpotType>,
-    maxPerPoint: Int = 4
+    maxPerPoint: Int = 4,
+    fractionRange: ClosedFloatingPointRange<Double> = 0.0..1.0
 ): OvernightSearchOutcome {
     val line = route.polyline
     if (line.isEmpty() || types.isEmpty()) return OvernightSearchOutcome(emptyList(), hadFailure = false)
 
     val numPoints = (route.distanceKm / 150).coerceIn(3, 8)
     val fractions = (1..numPoints).map { it.toDouble() / (numPoints + 1) }
+        .map { fractionRange.start + it * (fractionRange.endInclusive - fractionRange.start) }
     val allSpots = mutableListOf<OvernightSpot>()
     var hadFailure = false
 
@@ -564,13 +633,15 @@ private const val CHARGING_SEARCH_RADIUS_KM = 3.0
 private suspend fun findChargingStationsAlongRoute(
     provider: ChargingStationProvider,
     route: RouteInfo,
-    maxPerPoint: Int = 4
+    maxPerPoint: Int = 4,
+    fractionRange: ClosedFloatingPointRange<Double> = 0.0..1.0
 ): ChargingSearchOutcome {
     val line = route.polyline
     if (line.isEmpty()) return ChargingSearchOutcome(emptyList(), hadFailure = false)
 
     val numPoints = (route.distanceKm / 150).coerceIn(3, 8)
     val fractions = (1..numPoints).map { it.toDouble() / (numPoints + 1) }
+        .map { fractionRange.start + it * (fractionRange.endInclusive - fractionRange.start) }
     val allStations = mutableListOf<ChargingStation>()
     var hadFailure = false
 
