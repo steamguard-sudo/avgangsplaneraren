@@ -559,6 +559,8 @@ private data class ChargingSearchOutcome(
     val hadFailure: Boolean
 )
 
+private const val CHARGING_SEARCH_RADIUS_KM = 3.0
+
 private suspend fun findChargingStationsAlongRoute(
     provider: ChargingStationProvider,
     route: RouteInfo,
@@ -579,9 +581,12 @@ private suspend fun findChargingStationsAlongRoute(
         try {
             val stationsAtPoint = provider.candidatesNear(
                 point = point,
-                distanceFromStartKm = distanceFromStartKm
+                distanceFromStartKm = distanceFromStartKm,
+                radiusKm = CHARGING_SEARCH_RADIUS_KM
             )
-            allStations += stationsAtPoint.take(maxPerPoint)
+            allStations += stationsAtPoint
+                .filter { it.distanceFromRouteKm <= CHARGING_SEARCH_RADIUS_KM }
+                .take(maxPerPoint)
         } catch (e: Exception) {
             hadFailure = true
         }
