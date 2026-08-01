@@ -18,11 +18,11 @@ import kotlinx.coroutines.runBlocking
  * blockerar bara mot lokal disk-I/O, inte nätverk.
  *
  * @param radiusKm hur nära ruttpunkten en rastplats får ligga för att räknas
- *   som en kandidat (standard 3 km).
+ *   som en kandidat (standard 7 km).
  */
 class TrafikverketRestStopRepository(
     private val dao: RestAreaDao,
-    private val radiusKm: Double = 3.0
+    private val radiusKm: Double = 7.0
 ) : RestStopProvider {
 
     override fun candidatesNear(point: Coordinates, distanceFromStartKm: Int): List<RestStop> {
