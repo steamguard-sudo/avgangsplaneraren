@@ -23,7 +23,7 @@ android {
         applicationId = "com.avgangsplaneraren.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 3
+        versionCode = 4
         versionName = "0.1.0"
 
         manifestPlaceholders["MAPS_API_KEY"] = localProperties.getProperty("MAPS_API_KEY", "")
