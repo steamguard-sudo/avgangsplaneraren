@@ -61,6 +61,7 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.android.billingclient:billing-ktx:7.1.1")
     implementation("com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:1.0.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
