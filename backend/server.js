@@ -26,6 +26,10 @@ const cache = require("./cache");
 const app = express();
 
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
+// NOBIL-nyckeln är valfri på serverstartsnivå (till skillnad från
+// GOOGLE_API_KEY) — saknas den ska bara /charging-nobil sluta fungera
+// (tydligt 500-fel), inte hela backend krascha vid start.
+const NOBIL_API_KEY = process.env.NOBIL_API_KEY;
 const PORT = process.env.PORT || 3000;
 
 if (!GOOGLE_API_KEY) {
@@ -36,6 +40,7 @@ if (!GOOGLE_API_KEY) {
 const CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 dagar — vägar ändras sällan
 const PLACES_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 90; // 90 dagar — adresser/orter ändras nästan aldrig
 const OVERNIGHT_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 14; // 14 dagar — OSM-data uppdateras oftare av communityn
+const NOBIL_CACHE_TTL_MS = 1000 * 60 * 60 * 24; // 24 timmar — NOBIL anger att deras data uppdateras på timnivå
 
 /** Avrundar koordinater till ~1 km precision, så närliggande förfrågningar delar cache-post. */
 function roundCoord(value) {
@@ -197,6 +202,51 @@ app.get("/charging", async (req, res) => {
       err.cause ? `(orsak: ${err.cause})` : ""
     );
     res.status(502).json({ error: "Kunde inte hämta laddplatser just nu" });
+  }
+});
+
+/**
+ * Laddplatser via NOBIL (Norges/Sveriges officiella laddstationsregister,
+ * drivs av Enova/Energimyndigheten) — ett alternativ till /charging
+ * (OpenStreetMap/Overpass) ovan, samma svarsform så Android-appen kan
+ * använda vilken som helst av dem bakom samma ChargingStationProvider-
+ * gränssnitt.
+ *
+ * NOBILs användarvillkor kräver att anrop går via en mellanliggande server
+ * som cachar — precis det den här backenden redan gör för alla andra
+ * endpoints, så ingen extra arkitektur behövs.
+ */
+app.get("/charging-nobil", async (req, res) => {
+  const lat = parseFloat(req.query.lat);
+  const lon = parseFloat(req.query.lon);
+  const radiusKm = parseFloat(req.query.radiusKm) || 40;
+
+  if (Number.isNaN(lat) || Number.isNaN(lon)) {
+    return res.status(400).json({ error: "lat och lon krävs som tal" });
+  }
+
+  if (!NOBIL_API_KEY) {
+    console.error("Saknar NOBIL_API_KEY i miljövariablerna — kan inte söka laddplatser via NOBIL.");
+    return res.status(500).json({ error: "NOBIL-integrationen är inte konfigurerad på servern (saknar API-nyckel)" });
+  }
+
+  const key = `charging-nobil:${roundCoord(lat)},${roundCoord(lon)}:${radiusKm}`;
+  const cached = cache.get(key, NOBIL_CACHE_TTL_MS);
+  if (cached) {
+    return res.json({ ...cached, cached: true });
+  }
+
+  try {
+    const result = await fetchChargingStationsFromNobil(lat, lon, radiusKm);
+    cache.set(key, result);
+    res.json({ ...result, cached: false });
+  } catch (err) {
+    console.error(
+      "Fel vid anrop mot NOBIL API (laddplatser):",
+      err.message,
+      err.cause ? `(orsak: ${err.cause})` : ""
+    );
+    res.status(502).json({ error: "Kunde inte hämta laddplatser från NOBIL just nu" });
   }
 });
 
@@ -482,6 +532,84 @@ function haversineKm(lat1, lon1, lat2, lon2) {
     const byDistance = [...kept].sort((a, b) => a.distanceFromRouteKm - b.distanceFromRouteKm);
     return byDistance.slice(0, MAX_RESULTS);
   }
+
+/**
+ * Frågar NOBIL:s sök-API efter laddstationer inom en radie runt en punkt.
+ * https://nobil.no/api/server/search.php — se NOBIL:s API-dokumentation för
+ * fullständig fältlista. Svaret är en array med ETT objekt som har fältet
+ * "chargerstations".
+ */
+async function fetchChargingStationsFromNobil(lat, lon, radiusKm) {
+  const distanceMeters = Math.round(radiusKm * 1000);
+
+  const body = new URLSearchParams({
+    apikey: NOBIL_API_KEY,
+    apiversion: "3",
+    action: "search",
+    type: "near",
+    lat: String(lat),
+    long: String(lon),
+    distance: String(distanceMeters),
+    limit: "20",
+    format: "json",
+  });
+
+  const response = await fetch("https://nobil.no/api/server/search.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
+  });
+
+  if (!response.ok) {
+    throw new Error(`NOBIL svarade ${response.status}: ${await response.text()}`);
+  }
+
+  const json = await response.json();
+  // Svaret är en array med ETT objekt som innehåller "chargerstations".
+  const chargerStations = json?.[0]?.chargerstations || [];
+
+  // Position kommer som strängen "(lat,lon)" och måste parsas ut.
+  const positionPattern = /\(\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*\)/;
+
+  const rawStations = chargerStations
+    .map((entry) => {
+      const csmd = entry.csmd || {};
+      if (csmd.id === undefined || csmd.id === null) return null;
+
+      const match = positionPattern.exec(csmd.Position || "");
+      if (!match) return null;
+
+      const stationLat = parseFloat(match[1]);
+      const stationLon = parseFloat(match[2]);
+      if (Number.isNaN(stationLat) || Number.isNaN(stationLon)) return null;
+
+      // Attribut "7" = "Parking fee". NOBIL har varierat lite mellan
+      // .attrval och .trans för Ja/Nej-värdet beroende på version, så vi
+      // kollar båda.
+      const feeAttr = entry.attr?.st?.["7"];
+      let hasFee = null;
+      if (feeAttr) {
+        const value = feeAttr.trans ?? feeAttr.attrval;
+        if (value === "Yes") hasFee = true;
+        else if (value === "No") hasFee = false;
+      }
+
+      return {
+        id: String(csmd.id),
+        name: csmd.name || null,
+        lat: stationLat,
+        lon: stationLon,
+        operator: csmd.Owned_by || null,
+        capacity: csmd.Number_charging_points ? parseInt(csmd.Number_charging_points, 10) || null : null,
+        hasFee,
+        phone: null,
+        distanceFromRouteKm: Math.round(haversineKm(lat, lon, stationLat, stationLon) * 10) / 10,
+      };
+    })
+    .filter(Boolean);
+
+  return { stations: dedupeAndRankChargingStations(rawStations) };
+}
 
 async function fetchRouteFromGoogle(fromLat, fromLon, toLat, toLon) {
   // Routes API (efterträdaren till Directions API) — se

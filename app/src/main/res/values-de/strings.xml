@@ -107,7 +107,7 @@
     <!-- Ladestationen -->
     <string name="checkbox_show_charging">Ladestationen anzeigen (E-Auto)</string>
     <string name="charging_title">Ladestationen in der Nähe</string>
-    <string name="charging_source">Quelle: die OpenStreetMap-Community — bitte Kontaktinfo/Kompatibilität immer vorher prüfen.</string>
+    <string name="charging_source">Quelle: NOBIL (Enova/Energimyndigheten) — bitte Kontaktinfo/Kompatibilität immer vorher prüfen.</string>
     <string name="charging_failed_all">Suche momentan nicht möglich — der OpenStreetMap-Suchserver scheint überlastet zu sein. Bitte in Kürze erneut versuchen.</string>
     <string name="charging_failed_partial">Die Suche war nur teilweise erfolgreich (der Server war auf einigen Teilstrecken überlastet) — die folgende Liste kann unvollständig sein.</string>
     <string name="charging_empty">Entlang dieser Route wurden keine Ladestationen gefunden. Das bedeutet meist, dass OpenStreetMap in diesem Gebiet keine kartierten Orte hat — nicht, dass es in Wirklichkeit keine gibt.</string>

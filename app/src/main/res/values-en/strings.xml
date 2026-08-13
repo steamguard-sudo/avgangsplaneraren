@@ -107,7 +107,7 @@
     <!-- Charging stations -->
     <string name="checkbox_show_charging">Show charging stations (EV)</string>
     <string name="charging_title">Charging stations nearby</string>
-    <string name="charging_source">Source: the OpenStreetMap community — always double-check contact info/compatibility before you go.</string>
+    <string name="charging_source">Source: NOBIL (Enova/Swedish Energy Agency) — always double-check contact info/compatibility before you go.</string>
     <string name="charging_failed_all">Could not search right now — the OpenStreetMap search server seems to be overloaded. Try again in a little while.</string>
     <string name="charging_failed_partial">The search only partially succeeded (the server was overloaded for some sections) — the list below may be incomplete.</string>
     <string name="charging_empty">No charging stations were found along this route. This usually means OpenStreetMap lacks mapped locations in the area, not that none exist in reality.</string>

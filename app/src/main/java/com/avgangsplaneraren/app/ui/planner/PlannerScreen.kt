@@ -1,6 +1,7 @@
 package com.avgangsplaneraren.app.ui.planner
 
 import android.Manifest
+import android.app.Application
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
@@ -24,14 +25,19 @@ import androidx.compose.ui.platform.LocalContext
 import com.avgangsplaneraren.app.ui.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.avgangsplaneraren.app.R
 import com.avgangsplaneraren.app.AppLanguageState
 import com.avgangsplaneraren.app.ui.withLocale
+import com.avgangsplaneraren.app.billing.BillingRepository
+import com.avgangsplaneraren.app.billing.PremiumFeature
+import com.avgangsplaneraren.app.billing.PremiumGate
+import com.avgangsplaneraren.app.billing.PremiumViewModel
 import com.avgangsplaneraren.app.data.directions.AppConfig
 import com.avgangsplaneraren.app.data.directions.GooglePlacesRepository
 import com.avgangsplaneraren.app.data.directions.GoogleRoutesRepository
 import com.avgangsplaneraren.app.data.directions.RouteEstimator
-import com.avgangsplaneraren.app.data.osm.OverpassChargingRepository
+import com.avgangsplaneraren.app.data.nobil.NobilChargingRepository
 import com.avgangsplaneraren.app.data.osm.OverpassOvernightRepository
 import com.avgangsplaneraren.app.data.trafikverket.TrafikverketDataSeeder
 import com.avgangsplaneraren.app.data.trafikverket.TrafikverketDatabase
@@ -121,7 +127,12 @@ fun PlannerScreen() {
         GoogleRoutesRepository(baseUrl = AppConfig.BACKEND_BASE_URL, fallback = RouteEstimator())
     }
     val overnightProvider = remember { OverpassOvernightRepository(baseUrl = AppConfig.BACKEND_BASE_URL) }
-    val chargingProvider = remember { OverpassChargingRepository(baseUrl = AppConfig.BACKEND_BASE_URL) }
+    // Laddplatser hämtas via NOBIL (Norges/Sveriges officiella laddstationsregister)
+    // istället för OpenStreetMap/Overpass. Byt tillbaka om NOBIL visar sig sämre i
+    // praktiken: byt bara klassnamnet nedan till OverpassChargingRepository
+    // (com.avgangsplaneraren.app.data.osm, samma ChargingStationProvider-gränssnitt)
+    // och peka importen ovan dit igen.
+    val chargingProvider = remember { NobilChargingRepository(baseUrl = AppConfig.BACKEND_BASE_URL) }
     val database = remember { TrafikverketDatabase.getInstance(context) }
     val restStopRepository = remember { TrafikverketRestStopRepository(database.restAreaDao()) }
     val calculator = remember { CalculateDeparture(restStopProvider = restStopRepository) }
@@ -132,9 +143,17 @@ fun PlannerScreen() {
     val searchingOvernightText = stringResource(R.string.searching_overnight)
     val searchingChargingText = stringResource(R.string.searching_charging)
 
+    val premiumViewModel: PremiumViewModel = viewModel {
+        PremiumViewModel(BillingRepository(context.applicationContext as Application))
+    }
+
     LaunchedEffect(Unit) {
         TrafikverketDataSeeder.seedIfNeeded(context, database.restAreaDao())
         isSeeding = false
+    }
+
+    LaunchedEffect(premiumViewModel) {
+        premiumViewModel.connect()
     }
 
     val canCalculate = fromCoord != null && toCoord != null && !isSeeding && !isCalculating
@@ -488,7 +507,7 @@ fun PlannerScreen() {
         }
 
         result?.let { departureResult ->
-            DepartureBoard(departureResult)
+            DepartureBoard(departureResult, premiumViewModel)
             RouteMapView(
                 routePoints = lastRoutePolyline,
                 fromName = fromName.orEmpty(),
@@ -561,19 +580,23 @@ fun PlannerScreen() {
         }
 
         if (showOvernightSpots) {
-            OvernightSpotsSection(
-                spots = overnightSpots,
-                searchDone = overnightSearchDone,
-                searchFailed = overnightSearchFailed
-            )
+            PremiumGate(feature = PremiumFeature.OVERNIGHT_STAYS, viewModel = premiumViewModel) {
+                OvernightSpotsSection(
+                    spots = overnightSpots,
+                    searchDone = overnightSearchDone,
+                    searchFailed = overnightSearchFailed
+                )
+            }
         }
 
         if (showChargingStations) {
-            ChargingStationsSection(
-                stations = chargingStations,
-                searchDone = chargingSearchDone,
-                searchFailed = chargingSearchFailed
-            )
+            PremiumGate(feature = PremiumFeature.CHARGING_STATIONS, viewModel = premiumViewModel) {
+                ChargingStationsSection(
+                    stations = chargingStations,
+                    searchDone = chargingSearchDone,
+                    searchFailed = chargingSearchFailed
+                )
+            }
         }
     }
 }
