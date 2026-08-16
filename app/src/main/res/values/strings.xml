@@ -64,6 +64,9 @@
     <string name="fee_paid">Kostar pengar</string>
     <string name="fee_free">Gratis</string>
     <string name="fee_unknown">Pris okänt</string>
+    <string name="parking_fee_free">Gratis parkering</string>
+    <string name="parking_fee_paid">Parkeringsavgift</string>
+    <string name="parking_fee_unknown">Parkeringsavgift okänd</string>
     <string name="vehicle_caravan">Husvagn</string>
     <string name="vehicle_motorhome">Husbil</string>
     <string name="vehicle_tent">Tält</string>

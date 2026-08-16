@@ -64,6 +64,9 @@
     <string name="fee_paid">Kostenpflichtig</string>
     <string name="fee_free">Kostenlos</string>
     <string name="fee_unknown">Preis unbekannt</string>
+    <string name="parking_fee_free">Kostenloses Parken</string>
+    <string name="parking_fee_paid">Parkgebühr</string>
+    <string name="parking_fee_unknown">Parkgebühr unbekannt</string>
     <string name="vehicle_caravan">Wohnwagen</string>
     <string name="vehicle_motorhome">Wohnmobil</string>
     <string name="vehicle_tent">Zelt</string>

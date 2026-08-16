@@ -43,9 +43,9 @@ fun ChargingStationsSection(
             return
         }
 
-        val feePaidText = stringResource(R.string.fee_paid)
-        val feeFreeText = stringResource(R.string.fee_free)
-        val feeUnknownText = stringResource(R.string.fee_unknown)
+        val feePaidText = stringResource(R.string.parking_fee_paid)
+        val feeFreeText = stringResource(R.string.parking_fee_free)
+        val feeUnknownText = stringResource(R.string.parking_fee_unknown)
 
         stations.forEach { station ->
             Card(

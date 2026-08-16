@@ -64,6 +64,9 @@
     <string name="fee_paid">Costs money</string>
     <string name="fee_free">Free</string>
     <string name="fee_unknown">Price unknown</string>
+    <string name="parking_fee_free">Free parking</string>
+    <string name="parking_fee_paid">Parking fee</string>
+    <string name="parking_fee_unknown">Parking fee unknown</string>
     <string name="vehicle_caravan">Caravan</string>
     <string name="vehicle_motorhome">Motorhome</string>
     <string name="vehicle_tent">Tent</string>
