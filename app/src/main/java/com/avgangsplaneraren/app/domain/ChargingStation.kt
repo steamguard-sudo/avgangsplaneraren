@@ -8,7 +8,6 @@ data class ChargingStation(
     val operator: String?,
     val capacity: Int?,
     val hasFee: Boolean?,
-    val phoneNumber: String?,
     val distanceFromRouteKm: Double,
     val source: String = "OpenStreetMap"
 )

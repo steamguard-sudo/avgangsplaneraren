@@ -1,13 +1,9 @@
 package com.avgangsplaneraren.app.ui.board
 
-import android.content.Intent
-import android.net.Uri
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import com.avgangsplaneraren.app.ui.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -50,8 +46,6 @@ fun ChargingStationsSection(
         val feePaidText = stringResource(R.string.fee_paid)
         val feeFreeText = stringResource(R.string.fee_free)
         val feeUnknownText = stringResource(R.string.fee_unknown)
-        val phoneFormat = stringResource(R.string.phone_format)
-        val context = LocalContext.current
 
         stations.forEach { station ->
             Card(
@@ -85,18 +79,6 @@ fun ChargingStationsSection(
                         null -> feeUnknownText
                     }
                     Text(feeText, style = MaterialTheme.typography.labelSmall)
-
-                    station.phoneNumber?.let { phone ->
-                        Text(
-                            String.format(phoneFormat, phone),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.clickable {
-                                val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))
-                                context.startActivity(intent)
-                            }
-                        )
-                    }
                 }
             }
         }

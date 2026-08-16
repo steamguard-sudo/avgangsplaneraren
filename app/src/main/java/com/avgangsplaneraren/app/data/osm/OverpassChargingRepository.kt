@@ -32,7 +32,6 @@ class OverpassChargingRepository(baseUrl: String) : ChargingStationProvider {
                 operator = dto.operator,
                 capacity = dto.capacity,
                 hasFee = dto.hasFee,
-                phoneNumber = dto.phone,
                 distanceFromRouteKm = dto.distanceFromRouteKm
             )
         }

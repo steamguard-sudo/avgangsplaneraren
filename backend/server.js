@@ -30,6 +30,10 @@ const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 // GOOGLE_API_KEY) — saknas den ska bara /charging-nobil sluta fungera
 // (tydligt 500-fel), inte hela backend krascha vid start.
 const NOBIL_API_KEY = process.env.NOBIL_API_KEY;
+// Extra loggning av rådata från NOBIL (avstånd per station, rått attr.st),
+// avstängd som standard. Sätt NOBIL_DEBUG=true i miljön för att slå på den
+// när task:et om avståndsgränsen/avgiftsfältet ska felsökas mot riktig data.
+const NOBIL_DEBUG = process.env.NOBIL_DEBUG === "true";
 const PORT = process.env.PORT || 3000;
 
 if (!GOOGLE_API_KEY) {
@@ -496,7 +500,6 @@ function haversineKm(lat1, lon1, lat2, lon2) {
           operator: el.tags?.operator || el.tags?.network || null,
           capacity: el.tags?.capacity ? parseInt(el.tags.capacity, 10) || null : null,
           hasFee: el.tags?.fee ? el.tags.fee === "yes" : null,
-          phone: el.tags?.phone || el.tags?.["contact:phone"] || null,
           distanceFromRouteKm: Math.round(haversineKm(lat, lon, el.lat, el.lon) * 10) / 10,
         }));
         return { stations: dedupeAndRankChargingStations(rawStations) };
@@ -568,6 +571,21 @@ async function fetchChargingStationsFromNobil(lat, lon, radiusKm) {
   // Svaret är en array med ETT objekt som innehåller "chargerstations".
   const chargerStations = json?.[0]?.chargerstations || [];
 
+  // Diagnostik, avstängd som standard — sätt NOBIL_DEBUG=true i miljön för
+  // att logga exakt vad NOBIL svarar innan avståndsgränsen (task: 3 km
+  // respekteras inte) och avgiftsfältet (task: "Pris okänt") åtgärdas på
+  // riktigt. Ingen av de två buggarna är bekräftad mot verklig NOBIL-data
+  // än — bara mot NOBIL:s (delvis inaktuella) API-dokumentation — så
+  // parsningslogiken nedan är oförändrad tills loggarna bekräftar orsaken.
+  if (NOBIL_DEBUG) {
+    console.log(
+      `NOBIL_DEBUG: begärde distance=${distanceMeters}m (radiusKm=${radiusKm}) runt (${lat},${lon}), fick ${chargerStations.length} stationer`
+    );
+    if (chargerStations[0]?.attr?.st) {
+      console.log("NOBIL_DEBUG: attr.st för första stationen:", JSON.stringify(chargerStations[0].attr.st));
+    }
+  }
+
   // Position kommer som strängen "(lat,lon)" och måste parsas ut.
   const positionPattern = /\(\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*\)/;
 
@@ -594,6 +612,14 @@ async function fetchChargingStationsFromNobil(lat, lon, radiusKm) {
         else if (value === "No") hasFee = false;
       }
 
+      const distanceFromRouteKm = Math.round(haversineKm(lat, lon, stationLat, stationLon) * 10) / 10;
+
+      if (NOBIL_DEBUG) {
+        console.log(
+          `NOBIL_DEBUG: station ${csmd.id} "${csmd.name}" distanceFromRouteKm=${distanceFromRouteKm} (radiusKm=${radiusKm}) hasFee=${hasFee} feeAttr=${JSON.stringify(feeAttr)}`
+        );
+      }
+
       return {
         id: String(csmd.id),
         name: csmd.name || null,
@@ -602,8 +628,7 @@ async function fetchChargingStationsFromNobil(lat, lon, radiusKm) {
         operator: csmd.Owned_by || null,
         capacity: csmd.Number_charging_points ? parseInt(csmd.Number_charging_points, 10) || null : null,
         hasFee,
-        phone: null,
-        distanceFromRouteKm: Math.round(haversineKm(lat, lon, stationLat, stationLon) * 10) / 10,
+        distanceFromRouteKm,
       };
     })
     .filter(Boolean);

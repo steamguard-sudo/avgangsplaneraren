@@ -28,6 +28,5 @@ data class ChargingStationDto(
     val operator: String? = null,
     val capacity: Int? = null,
     val hasFee: Boolean? = null,
-    val phone: String? = null,
     val distanceFromRouteKm: Double = 0.0
 )
