@@ -19,5 +19,7 @@ class PremiumViewModel(
     fun hasAccess(feature: PremiumFeature): Boolean =
         premiumState.value.hasAccess(feature)
 
+    fun connect() = billingRepository.startConnection()
+
     fun refresh() = billingRepository.refreshPurchases()
 }

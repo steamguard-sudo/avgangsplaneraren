@@ -12,6 +12,9 @@ import com.avgangsplaneraren.app.ui.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.avgangsplaneraren.app.R
+import com.avgangsplaneraren.app.billing.PremiumFeature
+import com.avgangsplaneraren.app.billing.PremiumGate
+import com.avgangsplaneraren.app.billing.PremiumViewModel
 import com.avgangsplaneraren.app.domain.DepartureResult
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -19,7 +22,7 @@ import java.util.Locale
 private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
 @Composable
-fun DepartureBoard(result: DepartureResult) {
+fun DepartureBoard(result: DepartureResult, premiumViewModel: PremiumViewModel) {
     val languageTag by AppLanguageState.current
     val dateFormatter = remember(languageTag) {
         DateTimeFormatter.ofPattern("EEEE d MMMM", Locale(languageTag))
@@ -63,30 +66,32 @@ fun DepartureBoard(result: DepartureResult) {
         Spacer(modifier = Modifier.height(16.dp))
 
         if (result.restStops.isNotEmpty()) {
-            Text(stringResource(R.string.rest_stops_title), style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-            val tableLabel = stringResource(R.string.badge_table)
-            val benchLabel = stringResource(R.string.badge_bench)
-            val toiletLabel = stringResource(R.string.badge_toilet)
-            result.restStops.forEach { stop ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp)
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(
-                            "${stop.arrivalAtStop.format(timeFormatter)} · ${stop.name}",
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            stringResource(R.string.rest_stop_distance, stop.distanceFromStartKm),
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Badge(text = tableLabel, active = stop.hasTable)
-                            Badge(text = benchLabel, active = stop.hasBench)
-                            Badge(text = toiletLabel, active = stop.hasToilet)
+            PremiumGate(feature = PremiumFeature.REST_STOPS, viewModel = premiumViewModel) {
+                Text(stringResource(R.string.rest_stops_title), style = MaterialTheme.typography.titleMedium)
+                Spacer(modifier = Modifier.height(8.dp))
+                val tableLabel = stringResource(R.string.badge_table)
+                val benchLabel = stringResource(R.string.badge_bench)
+                val toiletLabel = stringResource(R.string.badge_toilet)
+                result.restStops.forEach { stop ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                "${stop.arrivalAtStop.format(timeFormatter)} · ${stop.name}",
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                stringResource(R.string.rest_stop_distance, stop.distanceFromStartKm),
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Badge(text = tableLabel, active = stop.hasTable)
+                                Badge(text = benchLabel, active = stop.hasBench)
+                                Badge(text = toiletLabel, active = stop.hasToilet)
+                            }
                         }
                     }
                 }
