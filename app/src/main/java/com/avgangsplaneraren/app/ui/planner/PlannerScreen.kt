@@ -651,7 +651,7 @@ private data class ChargingSearchOutcome(
     val hadFailure: Boolean
 )
 
-private const val CHARGING_SEARCH_RADIUS_KM = 3.0
+private const val CHARGING_SEARCH_RADIUS_KM = 5.0
 
 private suspend fun findChargingStationsAlongRoute(
     provider: ChargingStationProvider,
@@ -662,7 +662,7 @@ private suspend fun findChargingStationsAlongRoute(
     val line = route.polyline
     if (line.isEmpty()) return ChargingSearchOutcome(emptyList(), hadFailure = false)
 
-    val numPoints = (route.distanceKm / 150).coerceIn(3, 8)
+    val numPoints = (route.distanceKm / 150).coerceIn(6, 12)
     val fractions = (1..numPoints).map { it.toDouble() / (numPoints + 1) }
         .map { fractionRange.start + it * (fractionRange.endInclusive - fractionRange.start) }
     val allStations = mutableListOf<ChargingStation>()
