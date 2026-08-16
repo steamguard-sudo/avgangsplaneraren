@@ -568,8 +568,13 @@ async function fetchChargingStationsFromNobil(lat, lon, radiusKm) {
   }
 
   const json = await response.json();
-  // Svaret är en array med ETT objekt som innehåller "chargerstations".
-  const chargerStations = json?.[0]?.chargerstations || [];
+  // NOBIL:s svar är ett RAKT OBJEKT med "chargerstations" direkt på
+  // toppnivån (t.ex. {"Provider":"NOBIL.no",...,"chargerstations":[...]})
+  // — inte en array med objektet som första element. json?.[0]?.chargerstations
+  // letade alltså alltid i fel struktur och gav [] även när NOBIL hade
+  // riktiga träffar. json?.chargerstations är rätt väg; behåller
+  // json?.[0]?.chargerstations som extra fallback ifall formatet växlar.
+  const chargerStations = json?.chargerstations || json?.[0]?.chargerstations || [];
 
   if (NOBIL_DEBUG && chargerStations.length === 0) {
     // Fick 0 stationer redan från NOBIL, INNAN vår egen 3 km-filtrering körs.
