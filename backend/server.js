@@ -571,6 +571,19 @@ async function fetchChargingStationsFromNobil(lat, lon, radiusKm) {
   // Svaret är en array med ETT objekt som innehåller "chargerstations".
   const chargerStations = json?.[0]?.chargerstations || [];
 
+  if (NOBIL_DEBUG && chargerStations.length === 0) {
+    // Fick 0 stationer redan från NOBIL, INNAN vår egen 3 km-filtrering körs.
+    // Logga hela råsvaret (trunkerat) så vi ser om chargerstations verkligen
+    // är tomt, eller om vår json?.[0]?.chargerstations-sökväg missar datan
+    // (t.ex. om NOBIL svarar med ett annat toppnivå-skal nu än när koden
+    // skrevs).
+    console.log(
+      "NOBIL_DEBUG: 0 stationer — råsvarets nycklar:",
+      Array.isArray(json) ? `array[${json.length}], json[0] keys: ${Object.keys(json?.[0] || {}).join(", ")}` : typeof json
+    );
+    console.log("NOBIL_DEBUG: råsvar (trunkerat 1500 tecken):", JSON.stringify(json).slice(0, 1500));
+  }
+
   // Diagnostik, avstängd som standard — sätt NOBIL_DEBUG=true i miljön för
   // att logga exakt vad NOBIL svarar innan avståndsgränsen (task: 3 km
   // respekteras inte) och avgiftsfältet (task: "Pris okänt") åtgärdas på
