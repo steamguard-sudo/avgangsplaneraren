@@ -49,11 +49,18 @@ data class RestStop(
     val arrivalAtStop: LocalDateTime
 )
 
+/**
+ * @param plannedBreaks antal raster som lades in utifrån körtiden. Skiljer
+ *   "kort resa – inga raster planerades" (0) från "raster planerades men
+ *   ingen rastplats kunde hittas nära rutten" (> 0 medan [restStops] är tom),
+ *   så att UI:t kan visa rätt sak i stället för att bara dölja sektionen.
+ */
 data class DepartureResult(
     val departureTime: LocalDateTime,
     val arrivalTime: LocalDateTime,
     val distanceKm: Int,
     val driveMinutes: Double,
     val restMinutes: Int,
-    val restStops: List<RestStop>
+    val restStops: List<RestStop>,
+    val plannedBreaks: Int = 0
 )

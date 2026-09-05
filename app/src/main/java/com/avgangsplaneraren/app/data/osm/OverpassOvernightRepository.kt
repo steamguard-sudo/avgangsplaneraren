@@ -1,23 +1,15 @@
 package com.avgangsplaneraren.app.data.osm
 
+import com.avgangsplaneraren.app.data.BackendHttp
 import com.avgangsplaneraren.app.domain.Coordinates
 import com.avgangsplaneraren.app.domain.OvernightSpot
 import com.avgangsplaneraren.app.domain.OvernightSpotProvider
 import com.avgangsplaneraren.app.domain.OvernightSpotType
-import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
-import okhttp3.MediaType.Companion.toMediaType
-import retrofit2.Retrofit
 
 class OverpassOvernightRepository(baseUrl: String) : OvernightSpotProvider {
 
-    private val api: BackendOvernightApi = Retrofit.Builder()
-        .baseUrl(baseUrl)
-        .addConverterFactory(
-            kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
-                .asConverterFactory("application/json".toMediaType())
-        )
-        .build()
-        .create(BackendOvernightApi::class.java)
+    private val api: BackendOvernightApi =
+        BackendHttp.retrofit(baseUrl).create(BackendOvernightApi::class.java)
 
     override suspend fun candidatesNear(
         point: Coordinates,

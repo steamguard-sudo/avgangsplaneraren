@@ -46,6 +46,7 @@
     <string name="stat_drive_time">Fahrzeit</string>
     <string name="stat_rest_stops">Rastplätze</string>
     <string name="rest_stops_title">Rastplätze auf dem Weg</string>
+    <string name="rest_stops_empty">In der Nähe der geplanten Pausenpunkte wurde kein Rastplatz gefunden. Die schwedische Verkehrsbehörde hat landesweit nur etwa 270 offizielle Rastplätze, daher kann der nächste in dünner besiedelten Gegenden weiter entfernt liegen, als die Suche reicht. Konnte die Route nicht abgerufen werden, wurde außerdem eine grobe gerade Linie verwendet, wodurch die Pausenpunkte abseits der Straße liegen können.</string>
     <string name="rest_stop_distance">Ca. %1$d km ab Start</string>
     <string name="fallback_rest_stop_name">Rastplatz an %1$s</string>
     <string name="unknown_road">unbekannter Straße</string>

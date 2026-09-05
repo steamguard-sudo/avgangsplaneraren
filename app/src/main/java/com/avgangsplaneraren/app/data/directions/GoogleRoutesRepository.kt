@@ -1,12 +1,10 @@
 package com.avgangsplaneraren.app.data.directions
 
 import android.util.Log
+import com.avgangsplaneraren.app.data.BackendHttp
 import com.avgangsplaneraren.app.domain.Coordinates
 import com.avgangsplaneraren.app.domain.RouteInfo
 import com.avgangsplaneraren.app.domain.RouteProvider
-import retrofit2.Retrofit
-import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
-import okhttp3.MediaType.Companion.toMediaType
 
 /**
  * Riktig implementation av [RouteProvider]. Anropar backend/server.js
@@ -23,14 +21,8 @@ class GoogleRoutesRepository(
     private val fallback: RouteProvider = RouteEstimator()
 ) : RouteProvider {
 
-    private val api: BackendRoutesApi = Retrofit.Builder()
-        .baseUrl(baseUrl)
-        .addConverterFactory(
-            kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
-                .asConverterFactory("application/json".toMediaType())
-        )
-        .build()
-        .create(BackendRoutesApi::class.java)
+    private val api: BackendRoutesApi =
+        BackendHttp.retrofit(baseUrl).create(BackendRoutesApi::class.java)
 
     override suspend fun getRoute(from: Coordinates, to: Coordinates): RouteInfo {
         return try {

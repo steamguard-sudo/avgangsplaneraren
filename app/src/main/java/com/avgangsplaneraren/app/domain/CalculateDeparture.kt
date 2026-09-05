@@ -56,7 +56,8 @@ class CalculateDeparture(
             distanceKm = route.distanceKm,
             driveMinutes = route.driveMinutes,
             restMinutes = restMinutes,
-            restStops = restStops
+            restStops = restStops,
+            plannedBreaks = numBreaks
         )
     }
 

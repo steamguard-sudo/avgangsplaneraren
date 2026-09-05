@@ -1,22 +1,14 @@
 package com.avgangsplaneraren.app.data.osm
 
+import com.avgangsplaneraren.app.data.BackendHttp
 import com.avgangsplaneraren.app.domain.ChargingStation
 import com.avgangsplaneraren.app.domain.ChargingStationProvider
 import com.avgangsplaneraren.app.domain.Coordinates
-import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
-import okhttp3.MediaType.Companion.toMediaType
-import retrofit2.Retrofit
 
 class OverpassChargingRepository(baseUrl: String) : ChargingStationProvider {
 
-    private val api: BackendChargingApi = Retrofit.Builder()
-        .baseUrl(baseUrl)
-        .addConverterFactory(
-            kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
-                .asConverterFactory("application/json".toMediaType())
-        )
-        .build()
-        .create(BackendChargingApi::class.java)
+    private val api: BackendChargingApi =
+        BackendHttp.retrofit(baseUrl).create(BackendChargingApi::class.java)
 
     override suspend fun candidatesNear(
         point: Coordinates,

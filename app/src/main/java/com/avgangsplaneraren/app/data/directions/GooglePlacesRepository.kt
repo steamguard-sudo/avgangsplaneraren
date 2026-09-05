@@ -1,11 +1,9 @@
 package com.avgangsplaneraren.app.data.directions
 
+import com.avgangsplaneraren.app.data.BackendHttp
 import com.avgangsplaneraren.app.domain.Coordinates
 import com.avgangsplaneraren.app.domain.PlaceProvider
 import com.avgangsplaneraren.app.domain.PlaceSuggestion
-import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
-import okhttp3.MediaType.Companion.toMediaType
-import retrofit2.Retrofit
 
 /**
  * Riktig implementation av [PlaceProvider], via backend/server.js (som i
@@ -17,14 +15,8 @@ import retrofit2.Retrofit
  */
 class GooglePlacesRepository(baseUrl: String) : PlaceProvider {
 
-    private val api: BackendPlacesApi = Retrofit.Builder()
-        .baseUrl(baseUrl)
-        .addConverterFactory(
-            kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
-                .asConverterFactory("application/json".toMediaType())
-        )
-        .build()
-        .create(BackendPlacesApi::class.java)
+    private val api: BackendPlacesApi =
+        BackendHttp.retrofit(baseUrl).create(BackendPlacesApi::class.java)
 
     override suspend fun autocomplete(query: String): List<PlaceSuggestion> {
         if (query.isBlank()) return emptyList()

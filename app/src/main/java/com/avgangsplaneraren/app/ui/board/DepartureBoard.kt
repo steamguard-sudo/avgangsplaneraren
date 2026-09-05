@@ -65,32 +65,45 @@ fun DepartureBoard(result: DepartureResult, premiumViewModel: PremiumViewModel) 
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (result.restStops.isNotEmpty()) {
+        // Visa sektionen även när listan är tom, så länge raster faktiskt
+        // planerades (plannedBreaks > 0). Annars försvann rastplatserna helt
+        // utan ett ord om varför — ingen tom-text, inget fel. En kort resa
+        // utan planerade raster (plannedBreaks == 0) hoppar vi däremot över.
+        if (result.restStops.isNotEmpty() || result.plannedBreaks > 0) {
             PremiumGate(feature = PremiumFeature.REST_STOPS, viewModel = premiumViewModel) {
                 Text(stringResource(R.string.rest_stops_title), style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.height(8.dp))
-                val tableLabel = stringResource(R.string.badge_table)
-                val benchLabel = stringResource(R.string.badge_bench)
-                val toiletLabel = stringResource(R.string.badge_toilet)
-                result.restStops.forEach { stop ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text(
-                                "${stop.arrivalAtStop.format(timeFormatter)} · ${stop.name}",
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                stringResource(R.string.rest_stop_distance, stop.distanceFromStartKm),
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Badge(text = tableLabel, active = stop.hasTable)
-                                Badge(text = benchLabel, active = stop.hasBench)
-                                Badge(text = toiletLabel, active = stop.hasToilet)
+
+                if (result.restStops.isEmpty()) {
+                    Text(
+                        stringResource(R.string.rest_stops_empty),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                } else {
+                    val tableLabel = stringResource(R.string.badge_table)
+                    val benchLabel = stringResource(R.string.badge_bench)
+                    val toiletLabel = stringResource(R.string.badge_toilet)
+                    result.restStops.forEach { stop ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text(
+                                    "${stop.arrivalAtStop.format(timeFormatter)} · ${stop.name}",
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    stringResource(R.string.rest_stop_distance, stop.distanceFromStartKm),
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Badge(text = tableLabel, active = stop.hasTable)
+                                    Badge(text = benchLabel, active = stop.hasBench)
+                                    Badge(text = toiletLabel, active = stop.hasToilet)
+                                }
                             }
                         }
                     }

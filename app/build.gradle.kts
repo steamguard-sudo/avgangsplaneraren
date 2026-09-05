@@ -50,6 +50,13 @@ android {
             isMinifyEnabled = false
         }
     }
+
+    testOptions {
+        // Låter JVM-enhetstester anropa android.util.Log m.fl. utan att kasta
+        // "not mocked" — de returnerar bara defaultvärden. Behövs sedan
+        // TrafikverketRestStopRepository loggar när en sökning ger 0 träffar.
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 // Pinnar den JDK som kompilerar och kör tester till 21 (senaste LTS som

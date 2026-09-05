@@ -1,10 +1,13 @@
 package com.avgangsplaneraren.app.data.trafikverket
 
+import android.util.Log
 import com.avgangsplaneraren.app.domain.Coordinates
 import com.avgangsplaneraren.app.domain.RestStop
 import com.avgangsplaneraren.app.domain.RestStopProvider
 import com.avgangsplaneraren.app.domain.haversineKm
 import kotlinx.coroutines.runBlocking
+
+private const val TAG = "RestStopRepo"
 
 /**
  * Verklig implementation av [RestStopProvider], baserad på Trafikverkets
@@ -35,8 +38,21 @@ class TrafikverketRestStopRepository(
     override fun candidatesNear(point: Coordinates, distanceFromStartKm: Int): List<RestStop> {
         for (radiusKm in radiusStepsKm) {
             val matches = findWithinRadius(point, radiusKm, distanceFromStartKm)
-            if (matches.isNotEmpty()) return matches
+            if (matches.isNotEmpty()) {
+                Log.d(
+                    TAG,
+                    "@${distanceFromStartKm}km (${point.lat}, ${point.lon}): " +
+                        "${matches.size} rastplats(er) inom $radiusKm km"
+                )
+                return matches
+            }
         }
+        val rowCount = runCatching { runBlocking { dao.count() } }.getOrDefault(-1)
+        Log.w(
+            TAG,
+            "@${distanceFromStartKm}km (${point.lat}, ${point.lon}): inga rastplatser inom " +
+                "${radiusStepsKm.lastOrNull()} km (databasen har $rowCount rader)"
+        )
         return emptyList()
     }
 

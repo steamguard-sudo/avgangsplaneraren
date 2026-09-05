@@ -1,11 +1,9 @@
 package com.avgangsplaneraren.app.data.nobil
 
+import com.avgangsplaneraren.app.data.BackendHttp
 import com.avgangsplaneraren.app.domain.ChargingStation
 import com.avgangsplaneraren.app.domain.ChargingStationProvider
 import com.avgangsplaneraren.app.domain.Coordinates
-import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
-import okhttp3.MediaType.Companion.toMediaType
-import retrofit2.Retrofit
 
 /**
  * ChargingStationProvider baserad på NOBIL (Norges/Sveriges officiella
@@ -16,14 +14,8 @@ import retrofit2.Retrofit
  */
 class NobilChargingRepository(baseUrl: String) : ChargingStationProvider {
 
-    private val api: BackendNobilChargingApi = Retrofit.Builder()
-        .baseUrl(baseUrl)
-        .addConverterFactory(
-            kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
-                .asConverterFactory("application/json".toMediaType())
-        )
-        .build()
-        .create(BackendNobilChargingApi::class.java)
+    private val api: BackendNobilChargingApi =
+        BackendHttp.retrofit(baseUrl).create(BackendNobilChargingApi::class.java)
 
     override suspend fun candidatesNear(
         point: Coordinates,
