@@ -60,6 +60,10 @@ import com.avgangsplaneraren.app.ui.board.ChargingStationsSection
 import com.avgangsplaneraren.app.ui.board.DepartureBoard
 import com.avgangsplaneraren.app.ui.board.OvernightSpotsSection
 import com.avgangsplaneraren.app.ui.map.RouteMapView
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -619,24 +623,35 @@ private suspend fun findOvernightSpotsAlongRoute(
     val numPoints = (route.distanceKm / 150).coerceIn(3, 8)
     val fractions = (1..numPoints).map { it.toDouble() / (numPoints + 1) }
         .map { fractionRange.start + it * (fractionRange.endInclusive - fractionRange.start) }
-    val allSpots = mutableListOf<OvernightSpot>()
-    var hadFailure = false
 
-    for (fraction in fractions) {
-        val index = (fraction * (line.size - 1)).toInt().coerceIn(0, line.size - 1)
-        val point = line[index]
-        val distanceFromStartKm = (route.distanceKm * fraction).toInt()
-        try {
-            val spotsAtPoint = provider.candidatesNear(
-                point = point,
-                distanceFromStartKm = distanceFromStartKm,
-                types = types
-            )
-            allSpots += spotsAtPoint.take(maxPerPoint)
-        } catch (e: Exception) {
-            hadFailure = true
-        }
+    // Sök alla ruttpunkter samtidigt i stället för en i taget. Med den nya
+    // HTTP-timeouten (upp till ~60 s per anrop) kunde 3-8 sekventiella punkter
+    // ta flera minuter; parallellt tar hela sökningen som mest en punkts tid.
+    // awaitAll() ger tillbaka resultaten i samma ordning som fractions, så
+    // dedupe nedan blir deterministisk precis som med den gamla for-slingan.
+    val perPoint: List<List<OvernightSpot>?> = coroutineScope {
+        fractions.map { fraction ->
+            async {
+                val index = (fraction * (line.size - 1)).toInt().coerceIn(0, line.size - 1)
+                val point = line[index]
+                val distanceFromStartKm = (route.distanceKm * fraction).toInt()
+                try {
+                    provider.candidatesNear(
+                        point = point,
+                        distanceFromStartKm = distanceFromStartKm,
+                        types = types
+                    ).take(maxPerPoint)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    null // null = anropet för den här punkten misslyckades
+                }
+            }
+        }.awaitAll()
     }
+
+    val hadFailure = perPoint.any { it == null }
+    val allSpots = perPoint.filterNotNull().flatten()
 
     val seen = mutableSetOf<String>()
     val deduped = allSpots.filter { spot ->
@@ -665,26 +680,34 @@ private suspend fun findChargingStationsAlongRoute(
     val numPoints = (route.distanceKm / 150).coerceIn(6, 12)
     val fractions = (1..numPoints).map { it.toDouble() / (numPoints + 1) }
         .map { fractionRange.start + it * (fractionRange.endInclusive - fractionRange.start) }
-    val allStations = mutableListOf<ChargingStation>()
-    var hadFailure = false
 
-    for (fraction in fractions) {
-        val index = (fraction * (line.size - 1)).toInt().coerceIn(0, line.size - 1)
-        val point = line[index]
-        val distanceFromStartKm = (route.distanceKm * fraction).toInt()
-        try {
-            val stationsAtPoint = provider.candidatesNear(
-                point = point,
-                distanceFromStartKm = distanceFromStartKm,
-                radiusKm = CHARGING_SEARCH_RADIUS_KM
-            )
-            allStations += stationsAtPoint
-                .filter { it.distanceFromRouteKm <= CHARGING_SEARCH_RADIUS_KM }
-                .take(maxPerPoint)
-        } catch (e: Exception) {
-            hadFailure = true
-        }
+    // Parallellt, av samma skäl som findOvernightSpotsAlongRoute ovan — här
+    // ännu viktigare eftersom det kan bli upp till 12 punkter.
+    val perPoint: List<List<ChargingStation>?> = coroutineScope {
+        fractions.map { fraction ->
+            async {
+                val index = (fraction * (line.size - 1)).toInt().coerceIn(0, line.size - 1)
+                val point = line[index]
+                val distanceFromStartKm = (route.distanceKm * fraction).toInt()
+                try {
+                    provider.candidatesNear(
+                        point = point,
+                        distanceFromStartKm = distanceFromStartKm,
+                        radiusKm = CHARGING_SEARCH_RADIUS_KM
+                    )
+                        .filter { it.distanceFromRouteKm <= CHARGING_SEARCH_RADIUS_KM }
+                        .take(maxPerPoint)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    null // null = anropet för den här punkten misslyckades
+                }
+            }
+        }.awaitAll()
     }
+
+    val hadFailure = perPoint.any { it == null }
+    val allStations = perPoint.filterNotNull().flatten()
 
     val seenStations = mutableSetOf<String>()
     val dedupedStations = allStations.filter { station ->
