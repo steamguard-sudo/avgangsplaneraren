@@ -52,6 +52,19 @@ android {
     }
 }
 
+// Pinnar den JDK som kompilerar och kör tester till 21 (senaste LTS som
+// Gradle 8.7 stödjer). Utan detta används den JDK som råkar köra Gradle,
+// vilket går sönder på nyare JDK:er. Bytekodnivån är fortfarande 17 (se
+// compileOptions/kotlinOptions ovan). JDK 21 auto-nedladdas via Foojay-
+// resolvern i settings.gradle.kts om den saknas lokalt.
+//
+// OBS: detta styr INTE JVM:en som kör själva Gradle-daemonen – den måste
+// startas med JDK <= 21 (via JAVA_HOME eller org.gradle.java.home i din
+// personliga ~/.gradle/gradle.properties).
+kotlin {
+    jvmToolchain(21)
+}
+
 dependencies {
     implementation(platform("androidx.compose:compose-bom:2024.06.00"))
     implementation("androidx.compose.ui:ui")
