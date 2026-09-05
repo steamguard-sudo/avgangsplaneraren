@@ -1,47 +1,81 @@
 # Bygga projektet (assembleDebug m.fl.)
 
-`gradlew` / `gradlew.bat` finns INTE i repot (de är gitignorade och skapas
-normalt av Android Studio vid "Sync Project with Gradle Files" — se
-KOM_IGANG.md). I den här utvecklingsmiljön finns ingen Android Studio-synk
-körd, så wrapper-scripten saknas på disk. Använd istället den redan cachade
-Gradle-distributionen direkt, via Git Bash (PowerShell kan inte exekvera det
-extensionless launcher-scriptet).
-
-## Fungerande kommando (kört och verifierat 2026-08-02)
-
-Kör via Bash-verktyget (Git Bash), inte PowerShell:
+`gradlew` / `gradlew.bat` / `gradle/wrapper/gradle-wrapper.jar` ligger numera
+i repot (tidigare gitignorade). Vanligt bygge fungerar alltså direkt:
 
 ```bash
-export JAVA_HOME="/c/Program Files/Android/Android Studio1/jbr"
-cd "/c/Users/Z97X/Documents/avgangsplaneraren/AvgangsplanerarenAndroid"
-"/c/Users/Z97X/.gradle/wrapper/dists/gradle-8.7-bin/bhs2wmbdwecv87pi65oeuq5iu/gradle-8.7/bin/gradle" assembleDebug --console=plain
+cd "/d/Dokument/avgangsplaneraren/AvgangsplanerarenAndroid"
+./gradlew assembleDebug --console=plain
 ```
 
-Motsvarande i PowerShell (för Java-anrop, t.ex. `java -version`):
+Kör via **Bash-verktyget (Git Bash)**, inte PowerShell — PowerShell kan inte
+köra det extensionslösa unix-launcher-scriptet (`& "...gradlew"` respektive
+`bin/gradle` misslyckas tyst utan felmeddelande). `gradlew.bat` fungerar i
+PowerShell men Git Bash är standard här.
 
-```powershell
-& "C:\Program Files\Android\Android Studio1\jbr\bin\java.exe" -version
+## ⚠️ JDK 26 kan inte köra Gradle-daemonen
+
+Systemets standard-`java` (på PATH, `C:\Program Files\Common Files\Oracle\Java\javapath`)
+är **JDK 26.0.2.1 (EA)**. Gradle 8.7 kan inte köra daemonen på den — den
+buntade Kotlin-DSL-scriptkompilatorn (Kotlin 1.9.22 / IntelliJ `JavaVersion.parse`)
+klarar inte den 4-delade versionssträngen och bygget dör direkt med ett
+kryptiskt:
+
+```
+* What went wrong:
+26.0.2.1
+```
+```
+java.lang.IllegalArgumentException: 26.0.2.1
+    at org.jetbrains.kotlin.com.intellij.util.lang.JavaVersion.parse(JavaVersion.java:305)
 ```
 
-### Viktiga detaljer
+Det sker i daemon-JVM:en **innan** någon build-logik körs, så Java-toolchainen
+i `app/build.gradle.kts` (`kotlin { jvmToolchain(21) }`) hjälper inte — den
+styr bara kompilering/test av projektets källkod, inte daemon-JVM:en.
 
-- **JBR (bundlad JDK) ligger under `Android Studio1`, inte `Android Studio`.**
+**Lösning (redan på plats på den här maskinen):** `~/.gradle/gradle.properties`
+(dvs. `C:\Users\Z97X\.gradle\gradle.properties`, ej i repot) pekar
+daemon-JVM:en till en JDK 21:
+
+```properties
+org.gradle.java.home=C:/Users/Z97X/.gradle/jdks/eclipse_adoptium-21-amd64-windows.2
+```
+
+Med det fungerar `./gradlew` även om PATH-`java` är JDK 26. Alternativt: sätt
+`export JAVA_HOME="/c/Program Files/Android/Android Studio1/jbr"` (JBR 21) före
+anropet.
+
+Android Studio påverkas inte av PATH-`java` — den använder sin buntade JBR
+(21.0.10) och följer dessutom `org.gradle.java.home` ovan
+(`gradleJvm = #GRADLE_LOCAL_JAVA_HOME` i `.idea/gradle.xml`).
+
+## Viktiga detaljer
+
+- **JBR (buntad JDK) ligger under `Android Studio1`, inte `Android Studio`.**
   Det finns två installationer på maskinen
   (`C:\Program Files\Android\Android Studio` och `...\Android Studio1`);
   bara `Android Studio1\jbr\bin\java.exe` existerar/fungerar. Verifiera vid
   behov med `Test-Path` i PowerShell innan du antar sökvägen.
 - Java-version i JBR: OpenJDK 21.0.10.
-- Den cachade Gradle 8.7-distributionen ligger under
-  `C:\Users\Z97X\.gradle\wrapper\dists\gradle-8.7-bin\<hash>\gradle-8.7\bin\gradle`.
-  Hash-katalogen (`bhs2wmbdwecv87pi65oeuq5iu`) kan ändras om cachen rensas
-  eller byggs om — om sökvägen ovan inte finns, sök fram den nya med:
-  ```bash
-  find "/c/Users/Z97X/.gradle/wrapper/dists/gradle-8.7-bin" -maxdepth 2 -name gradle -type f
-  ```
 - Gradle-version bestäms av `gradle/wrapper/gradle-wrapper.properties`
-  (för närvarande `gradle-8.7-bin.zip`). Om den filen uppdateras till en ny
-  version måste motsvarande distribution finnas cachad (eller laddas ner) på
-  nytt.
-- Kör builden via Bash-verktyget (Git Bash), inte PowerShell — PowerShell
-  kan inte köra det extensionless unix-launcher-scriptet `bin/gradle`
-  (`& "...\bin\gradle"` misslyckas tyst utan felmeddelande).
+  (för närvarande `gradle-8.7-bin.zip`). Den cachade distributionen ligger
+  under `C:\Users\Z97X\.gradle\wrapper\dists\gradle-8.7-bin\<hash>\gradle-8.7\`.
+- Fallback om `./gradlew` strular: kör den cachade distributionens launcher
+  direkt (leta upp `<hash>` om cachen byggts om):
+  ```bash
+  export JAVA_HOME="/c/Program Files/Android/Android Studio1/jbr"
+  GRADLE=$(find "/c/Users/Z97X/.gradle/wrapper/dists/gradle-8.7-bin" -maxdepth 2 -name gradle -type f | head -1)
+  "$GRADLE" assembleDebug --console=plain
+  ```
+- Java-toolchain: `kotlin { jvmToolchain(21) }` i `app/build.gradle.kts`, med
+  Foojay-resolvern i `settings.gradle.kts` för auto-nedladdning av JDK 21 på
+  CI. Bytekodnivån är fortfarande 17 (`compileOptions` / `kotlinOptions`).
+
+## Verifierat
+
+- `./gradlew clean :app:assembleDebug :app:testDebugUnitTest` med JBR 21 →
+  BUILD SUCCESSFUL, `app-debug.apk` byggd, enhetstester gröna (2026-09-05).
+- `./gradlew testDebugUnitTest` med PATH-`java` = JDK 26 och utan `JAVA_HOME`
+  (dvs. enbart via `org.gradle.java.home` i `~/.gradle/gradle.properties`) →
+  BUILD SUCCESSFUL (2026-09-05).
