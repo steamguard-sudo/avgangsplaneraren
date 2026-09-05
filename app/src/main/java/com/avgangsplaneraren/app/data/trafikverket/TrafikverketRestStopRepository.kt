@@ -17,15 +17,34 @@ import kotlinx.coroutines.runBlocking
  * (ingen nätverksrensning) är detta ett rimligt val här – `runBlocking`
  * blockerar bara mot lokal disk-I/O, inte nätverk.
  *
- * @param radiusKm hur nära ruttpunkten en rastplats får ligga för att räknas
- *   som en kandidat (standard 7 km).
+ * Trafikverket har bara ca 270 officiella rastplatser i hela landet (se
+ * trafikverket.se/resa-och-trafik/vag/Rastplatser), så avståndet mellan dem
+ * kan lätt bli 10-25 km i glesare trakter. En fast, snäv radie (tidigare
+ * 7 km) missar därför ofta helt i sådana områden även om en rastplats
+ * finns på fullt rimligt avstånd. Sökningen vidgas därför stegvis: 7 km
+ * (nära/exakt), sedan 15 km, sedan 30 km, innan vi ger upp helt.
+ *
+ * @param radiusStepsKm radier att försöka i tur och ordning, från snävast
+ *   till vidast.
  */
 class TrafikverketRestStopRepository(
     private val dao: RestAreaDao,
-    private val radiusKm: Double = 7.0
+    private val radiusStepsKm: List<Double> = listOf(7.0, 15.0, 30.0)
 ) : RestStopProvider {
 
     override fun candidatesNear(point: Coordinates, distanceFromStartKm: Int): List<RestStop> {
+        for (radiusKm in radiusStepsKm) {
+            val matches = findWithinRadius(point, radiusKm, distanceFromStartKm)
+            if (matches.isNotEmpty()) return matches
+        }
+        return emptyList()
+    }
+
+    private fun findWithinRadius(
+        point: Coordinates,
+        radiusKm: Double,
+        distanceFromStartKm: Int
+    ): List<RestStop> {
         // Grov bounding box i grader. 1° latitud ≈ 111 km; longitud varierar
         // med breddgrad, men en enkel överskattning duger för grovfiltret –
         // exakt avstånd räknas ut nedan med haversine.
