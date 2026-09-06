@@ -101,3 +101,7 @@ Status/loggar: `https://github.com/steamguard-sudo/avgangsplaneraren/actions`.
   BUILD SUCCESSFUL (2026-09-05).
 - GitHub Actions-workflowen (`android.yml`) grön på `main` — första körningen
   samt fix G (`testDebugUnitTest` + `assembleDebug`), 2026-09-06.
+- Fix J (rastbrytpunkter efter kumulativ båglängd) — `./gradlew
+  testDebugUnitTest` 11/11 grönt (nytt test `brytpunkt placeras efter faktisk
+  baglangd, inte efter punktindex`), `assembleDebug` OK, CI grön på `main`
+  (commit `97781cd`), 2026-09-06.
