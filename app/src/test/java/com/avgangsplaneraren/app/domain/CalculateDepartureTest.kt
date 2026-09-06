@@ -106,4 +106,63 @@ class CalculateDepartureTest {
             )
         }
     }
+
+    @Test
+    fun `brytpunkt placeras efter faktisk baglangd, inte efter punktindex`() {
+        // Medvetet ojämn polyline: p0->p1 är bara ~1,1 km, p1->p2 ~221 km.
+        // Den gamla metoden (indexera line[fraction * lastIndex]) skulle vid
+        // fraction 0.5 välja line[1] = p1, dvs ~1 km in på en 222 km-resa.
+        // Kumulativ båglängd ska i stället landa ungefär mitt på det långa
+        // segmentet (runt lat 59.0).
+        val p0 = Coordinates(58.0000, 15.0000)
+        val p1 = Coordinates(58.0100, 15.0000) // ~1,1 km norr om p0
+        val p2 = Coordinates(60.0000, 15.0000) // ~221 km norr om p1
+        val route = RouteInfo(
+            distanceKm = 222,
+            driveMinutes = 180.0, // floor(180/120) = 1 rast -> fraction = 0.5
+            polyline = listOf(p0, p1, p2)
+        )
+
+        val provider = CapturingRestStopProvider()
+        val calc = CalculateDeparture(restStopProvider = provider)
+
+        calc.calculate(
+            TripInput("A", "B", LocalDateTime.of(2026, 7, 24, 17, 0)),
+            route
+        )
+
+        assertEquals(1, provider.searchedPoints.size)
+        val searched = provider.searchedPoints.single()
+
+        // Gamla beteendet gav exakt p1 (0 km bort). Nya ska ligga ~110 km från
+        // p1, ungefär halvvägs längs den långa raksträckan.
+        val kmFromP1 = haversineKm(p1, searched)
+        assertTrue(
+            "brytpunkten hamnade ${kmFromP1.toInt()} km från p1 – förväntade ~110 km",
+            kmFromP1 > 90.0
+        )
+        // Fortfarande på linjen (samma longitud).
+        assertEquals(15.0, searched.lon, 0.0001)
+    }
+
+    /** Fångar vilken koordinat rastplatssökningen faktiskt gjordes på. */
+    private class CapturingRestStopProvider : RestStopProvider {
+        val searchedPoints = mutableListOf<Coordinates>()
+
+        override fun candidatesNear(point: Coordinates, distanceFromStartKm: Int): List<RestStop> {
+            searchedPoints += point
+            return listOf(
+                RestStop(
+                    name = "Testrastplats",
+                    latitude = point.lat,
+                    longitude = point.lon,
+                    hasTable = true,
+                    hasBench = true,
+                    hasToilet = true,
+                    distanceFromStartKm = distanceFromStartKm,
+                    arrivalAtStop = LocalDateTime.of(2026, 7, 24, 12, 0)
+                )
+            )
+        }
+    }
 }

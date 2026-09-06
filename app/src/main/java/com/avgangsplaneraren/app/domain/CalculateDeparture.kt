@@ -94,7 +94,18 @@ class CalculateDeparture(
         return stops
     }
 
-    /** Interpolerar en punkt längs ruttens polyline vid given andel (0.0–1.0) av sträckan. */
+    /**
+     * Interpolerar en punkt längs ruttens polyline vid given andel (0.0–1.0) av
+     * den *faktiska sträckan*, mätt som kumulativ båglängd (haversine) mellan
+     * polyline-punkterna.
+     *
+     * Riktiga vägars polylines har ojämnt fördelade punkter — tätt i kurvor och
+     * tätort, glest på raka landsvägssträckor. Att bara indexera in i punktlistan
+     * (`line[fraction * lastIndex]`) placerar då brytpunkten efter *antal punkter*
+     * snarare än efter körd sträcka, vilket kan hamna tiotals mil fel. Här räknas
+     * i stället ut var målavståndet `fraction * total båglängd` ligger, och
+     * punkten interpoleras linjärt inom det segment som innehåller det.
+     */
     private fun pointAtFraction(route: RouteInfo, fraction: Double): Coordinates {
         val line = route.polyline
         if (line.size < 2) {
@@ -102,8 +113,32 @@ class CalculateDeparture(
             // punkten om den finns, annars låt providern hantera fallback själv.
             return line.firstOrNull() ?: Coordinates(0.0, 0.0)
         }
-        val index = (fraction * (line.size - 1)).roundToInt().coerceIn(0, line.size - 1)
-        return line[index]
+
+        // Kumulativ båglängd fram till varje punkt; cumulative[0] = 0.
+        val cumulative = DoubleArray(line.size)
+        for (i in 1 until line.size) {
+            cumulative[i] = cumulative[i - 1] + haversineKm(line[i - 1], line[i])
+        }
+        val totalKm = cumulative.last()
+        if (totalKm <= 0.0) return line.first() // alla punkter sammanfaller
+
+        val targetKm = fraction.coerceIn(0.0, 1.0) * totalKm
+
+        // Första segmentet [seg-1, seg] vars slut når förbi målavståndet.
+        var seg = 1
+        while (seg < line.size - 1 && cumulative[seg] < targetKm) {
+            seg++
+        }
+        val segStartKm = cumulative[seg - 1]
+        val segLenKm = cumulative[seg] - segStartKm
+        val t = if (segLenKm > 0.0) (targetKm - segStartKm) / segLenKm else 0.0
+
+        val a = line[seg - 1]
+        val b = line[seg]
+        return Coordinates(
+            lat = a.lat + (b.lat - a.lat) * t,
+            lon = a.lon + (b.lon - a.lon) * t
+        )
     }
 }
 
