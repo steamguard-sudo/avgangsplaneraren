@@ -16,3 +16,5 @@ services:
         value: "22"
       - key: NODE_ENV
         value: production
+      - key: OVERPASS_CONTACT
+        value: https://github.com/steamguard-sudo/avgangsplaneraren

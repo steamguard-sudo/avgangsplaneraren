@@ -46,6 +46,29 @@ const PLACES_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 90; // 90 dagar — adresser/o
 const OVERNIGHT_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 14; // 14 dagar — OSM-data uppdateras oftare av communityn
 const NOBIL_CACHE_TTL_MS = 1000 * 60 * 60 * 24; // 24 timmar — NOBIL anger att deras data uppdateras på timnivå
 
+// --- Overpass-robusthet (se runOverpassQuery / postOverpassQuery nedan) ---
+// Hård timeout per enskild spegel, via AbortController.
+const OVERPASS_ATTEMPT_TIMEOUT_MS = parseInt(process.env.OVERPASS_ATTEMPT_TIMEOUT_MS, 10) || 20000;
+// Total väggklockebudget för HELA spegel-rundan. Måste hållas under appens
+// OkHttp-timeouter (readTimeout 60 s / callTimeout 75 s i BackendHttp.kt),
+// annars hinner appen ge upp först och backendens fortsatta försök blir
+// bortkastade. 4 speglar × 20 s hade blivit 80 s — därför en gemensam budget.
+const OVERPASS_TOTAL_BUDGET_MS = parseInt(process.env.OVERPASS_TOTAL_BUDGET_MS, 10) || 45000;
+// Overpass usage policy ber om en beskrivande User-Agent med en riktig
+// kontaktväg, så de kan höra av sig i stället för att blockera er IP.
+const OVERPASS_CONTACT =
+  process.env.OVERPASS_CONTACT || "https://github.com/steamguard-sudo/avgangsplaneraren";
+const OVERPASS_USER_AGENT = `Avgangsplaneraren/1.0 (+${OVERPASS_CONTACT})`;
+// Delad spegel-lista, provas i tur och ordning. overpass-api.de blockar ibland
+// moln-IP (t.ex. Render); de andra tre är community-drivna alternativ med
+// historiskt hyfsad uptime.
+const OVERPASS_ENDPOINTS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+  "https://overpass.private.coffee/api/interpreter",
+  "https://overpass.osm.ch/api/interpreter",
+];
+
 /** Avrundar koordinater till ~1 km precision, så närliggande förfrågningar delar cache-post. */
 function roundCoord(value) {
   return Math.round(value * 100) / 100; // ~1.1 km precision vid svenska breddgrader
@@ -311,64 +334,37 @@ async function fetchPlaceDetailsFromGoogle(placeId) {
 }
 
 /**
- * Frågar Overpass API (OpenStreetMaps sökgränssnitt) efter husbils-/
- * husvagnsplatser och campingplatser inom en radie runt en punkt.
+ * Kör en Overpass-fråga mot speglarna (OVERPASS_ENDPOINTS) i tur och ordning
+ * tills en svarar. Hela rundan delar en tidsbudget (OVERPASS_TOTAL_BUDGET_MS):
+ * varje spegel-anrop får som mest OVERPASS_ATTEMPT_TIMEOUT_MS, eller mindre om
+ * det är mindre än så kvar av budgeten. När budgeten är slut slutar vi försöka
+ * och kastar det senaste felet — anroparen (/overnight, /charging) skriver då
+ * en negativ-cache-post och svarar 502.
  *
- * Försöker mot huvudinstansen (overpass-api.de) först, och faller tillbaka
- * på en community-driven spegel (kumi.systems) om den första inte går att
- * nå — den publika huvudinstansen blockerar ibland trafik från
- * molnleverantörers IP-adresser (t.ex. Render) som skydd mot missbruk.
+ * Sekventiellt, inte parallellt: speglarna är gratis och delade, och
+ * findOvernight/ChargingStationsAlongRoute i appen fläktar redan ut flera
+ * ruttpunkter samtidigt. Nästa spegel provas bara när den förra faktiskt fallit.
+ * Backend-cachen (14 dagars TTL) gör att samma område ändå bara frågas en gång
+ * totalt. Vid stor trafik: överväg att självhosta en Overpass-instans.
  *
- * OBS om artighet mot Overpass: dessa instanser är gratis men delade av
- * alla som använder dem. Backend-cachen (14 dagars TTL) gör att samma
- * område bara frågas en gång totalt, oavsett hur många av era användare
- * som råkar passera samma sträcka. Om trafiken blir stor, överväg att
- * självhosta en Overpass-instans istället.
+ * @param label kort etikett för loggraderna, t.ex. "övernattning".
  */
-async function fetchOvernightFromOverpass(lat, lon, radiusKm, types) {
-  const radiusMeters = Math.round(radiusKm * 1000);
-  const nodeFilters = types
-    .map((type) => `node["tourism"="${type}"](around:${radiusMeters},${lat},${lon});`)
-    .join("\n      ");
-  const query = `
-    [out:json][timeout:25];
-    (
-      ${nodeFilters}
-    );
-    out body;
-  `;
-
-  const endpoints = [
-    "https://overpass-api.de/api/interpreter",
-    "https://overpass.kumi.systems/api/interpreter",
-  ];
-
+async function runOverpassQuery(query, label) {
+  const deadline = Date.now() + OVERPASS_TOTAL_BUDGET_MS;
   let lastError;
-  for (const endpoint of endpoints) {
+
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    if (deadline - Date.now() < 1500) {
+      console.error(
+        `Overpass (${label}): tidsbudgeten (${OVERPASS_TOTAL_BUDGET_MS} ms) slut, hoppar över återstående speglar`
+      );
+      break;
+    }
     try {
-      const json = await postOverpassQuery(endpoint, query);
-      const rawSpots = (json.elements || []).map((el) => ({
-        id: String(el.id),
-        name: el.tags?.name || null,
-        lat: el.lat,
-        lon: el.lon,
-        type: el.tags?.tourism || "unknown",
-        hasFee: el.tags?.fee ? el.tags.fee === "yes" : null,
-        allowsCaravan: parseOsmYesNo(el.tags?.caravans),
-        allowsMotorhome: parseOsmYesNo(el.tags?.motorhome),
-        allowsTent: parseOsmYesNo(el.tags?.tents),
-        // OSM använder både "phone" och "contact:phone" för samma sak.
-                   phone: el.tags?.phone || el.tags?.["contact:phone"] || null,
-        // Fågelvägen från den sökta ruttpunkten till platsen — INTE
-        // körsträcka. En sjö eller omväg kan göra den verkliga omvägen
-        // betydligt längre än detta tal, men det ger ändå en fingervisning
-        // om vad som är en rimlig avvikelse från rutten.
-        distanceFromRouteKm: Math.round(haversineKm(lat, lon, el.lat, el.lon) * 10) / 10,
-      }));
-      return { spots: dedupeAndRankOvernightSpots(rawSpots) };
+      return await postOverpassQuery(endpoint, query, deadline);
     } catch (err) {
       console.error(
-        `Overpass-anrop mot ${endpoint} misslyckades:`,
+        `Overpass-anrop (${label}) mot ${endpoint} misslyckades:`,
         err.message,
         err.cause ? `(orsak: ${err.cause})` : ""
       );
@@ -376,43 +372,86 @@ async function fetchOvernightFromOverpass(lat, lon, radiusKm, types) {
     }
   }
 
-  throw lastError;
+  throw lastError || new Error(`Overpass (${label}): ingen spegel svarade inom budgeten`);
 }
 
-async function postOverpassQuery(endpoint, query) {
-  const attempts = 2; // ett första försök + ett omförsök vid överbelastning
-  let lastError;
+/**
+ * Frågar Overpass API (OpenStreetMaps sökgränssnitt) efter husbils-/
+ * husvagnsplatser och campingplatser inom en radie runt en punkt.
+ */
+async function fetchOvernightFromOverpass(lat, lon, radiusKm, types) {
+  const radiusMeters = Math.round(radiusKm * 1000);
+  const nodeFilters = types
+    .map((type) => `node["tourism"="${type}"](around:${radiusMeters},${lat},${lon});`)
+    .join("\n      ");
+  const query = `
+    [out:json][timeout:20];
+    (
+      ${nodeFilters}
+    );
+    out body;
+  `;
 
-  for (let attempt = 1; attempt <= attempts; attempt++) {
-    try {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          // Overpass usage policy ber om en beskrivande User-Agent så de kan
-          // kontakta er vid problem, istället för att bara blockera er IP.
-          "User-Agent": "Avgangsplaneraren/1.0 (kontakt: fyll-i-din-epost-har)",
-        },
-        body: "data=" + encodeURIComponent(query),
-      });
+  const json = await runOverpassQuery(query, "övernattning");
+  const rawSpots = (json.elements || []).map((el) => ({
+    id: String(el.id),
+    name: el.tags?.name || null,
+    lat: el.lat,
+    lon: el.lon,
+    type: el.tags?.tourism || "unknown",
+    hasFee: el.tags?.fee ? el.tags.fee === "yes" : null,
+    allowsCaravan: parseOsmYesNo(el.tags?.caravans),
+    allowsMotorhome: parseOsmYesNo(el.tags?.motorhome),
+    allowsTent: parseOsmYesNo(el.tags?.tents),
+    // OSM använder både "phone" och "contact:phone" för samma sak.
+    phone: el.tags?.phone || el.tags?.["contact:phone"] || null,
+    // Fågelvägen från den sökta ruttpunkten till platsen — INTE körsträcka.
+    // En sjö eller omväg kan göra den verkliga omvägen betydligt längre än
+    // detta tal, men det ger ändå en fingervisning om vad som är en rimlig
+    // avvikelse från rutten.
+    distanceFromRouteKm: Math.round(haversineKm(lat, lon, el.lat, el.lon) * 10) / 10,
+  }));
+  return { spots: dedupeAndRankOvernightSpots(rawSpots) };
+}
 
-      if (!response.ok) {
-        throw new Error(`Overpass svarade ${response.status}: ${await response.text()}`);
-      }
+/**
+ * Ett enskilt POST-anrop mot en Overpass-spegel, med hård timeout via
+ * AbortController. Timeouten kortas ned om det är mindre än
+ * OVERPASS_ATTEMPT_TIMEOUT_MS kvar av den totala budgeten (`deadline`), så att
+ * spegel-rundan aldrig överskrider OVERPASS_TOTAL_BUDGET_MS. Inget eget
+ * omförsök här — de fyra speglarna i OVERPASS_ENDPOINTS är retryn.
+ * Kastar vid timeout, nätfel eller icke-2xx-svar.
+ */
+async function postOverpassQuery(endpoint, query, deadline) {
+  const budgetLeftMs = deadline - Date.now();
+  const timeoutMs = Math.min(OVERPASS_ATTEMPT_TIMEOUT_MS, Math.max(budgetLeftMs, 0));
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-      return await response.json();
-    } catch (err) {
-      lastError = err;
-      const isLastAttempt = attempt === attempts;
-      // 504 "too busy" är precis den typen av tillfälligt fel ett omförsök
-      // faktiskt kan hjälpa mot — vänta 3 sekunder och försök en gång till.
-      if (!isLastAttempt) {
-        await new Promise((resolve) => setTimeout(resolve, 3000));
-      }
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": OVERPASS_USER_AGENT,
+      },
+      body: "data=" + encodeURIComponent(query),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Overpass svarade ${response.status}: ${await response.text()}`);
     }
-  }
 
-  throw lastError;
+    return await response.json();
+  } catch (err) {
+    if (err.name === "AbortError") {
+      throw new Error(`Overpass-anrop mot ${endpoint} tog längre än ${timeoutMs} ms (timeout)`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /**
@@ -475,45 +514,25 @@ function haversineKm(lat1, lon1, lat2, lon2) {
   async function fetchChargingStationsFromOverpass(lat, lon, radiusKm) {
     const radiusMeters = Math.round(radiusKm * 1000);
     const query = `
-
-      [out:json][timeout:25];
+      [out:json][timeout:20];
       (
         node["amenity"="charging_station"](around:${radiusMeters},${lat},${lon});
       );
       out body;
     `;
 
-    const endpoints = [
-      "https://overpass-api.de/api/interpreter",
-      "https://overpass.kumi.systems/api/interpreter",
-    ];
-
-    let lastError;
-    for (const endpoint of endpoints) {
-      try {
-        const json = await postOverpassQuery(endpoint, query);
-        const rawStations = (json.elements || []).map((el) => ({
-          id: String(el.id),
-          name: el.tags?.name || null,
-          lat: el.lat,
-          lon: el.lon,
-          operator: el.tags?.operator || el.tags?.network || null,
-          capacity: el.tags?.capacity ? parseInt(el.tags.capacity, 10) || null : null,
-          hasFee: el.tags?.fee ? el.tags.fee === "yes" : null,
-          distanceFromRouteKm: Math.round(haversineKm(lat, lon, el.lat, el.lon) * 10) / 10,
-        }));
-        return { stations: dedupeAndRankChargingStations(rawStations) };
-      } catch (err) {
-        console.error(
-          `Overpass-anrop (laddplatser) mot ${endpoint} misslyckades:`,
-          err.message,
-          err.cause ? `(orsak: ${err.cause})` : ""
-        );
-        lastError = err;
-      }
-    }
-
-    throw lastError;
+    const json = await runOverpassQuery(query, "laddplatser");
+    const rawStations = (json.elements || []).map((el) => ({
+      id: String(el.id),
+      name: el.tags?.name || null,
+      lat: el.lat,
+      lon: el.lon,
+      operator: el.tags?.operator || el.tags?.network || null,
+      capacity: el.tags?.capacity ? parseInt(el.tags.capacity, 10) || null : null,
+      hasFee: el.tags?.fee ? el.tags.fee === "yes" : null,
+      distanceFromRouteKm: Math.round(haversineKm(lat, lon, el.lat, el.lon) * 10) / 10,
+    }));
+    return { stations: dedupeAndRankChargingStations(rawStations) };
   }
 
   function dedupeAndRankChargingStations(stations) {
