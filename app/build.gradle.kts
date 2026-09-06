@@ -45,9 +45,28 @@ android {
         jvmTarget = "17"
     }
 
+    // Release-signering läses från local.properties (gitignorad, aldrig
+    // committad — samma mönster som MAPS_API_KEY högst upp i filen). Saknas
+    // RELEASE_STORE_FILE (t.ex. på CI eller en annan maskin) skapas ingen
+    // signingConfig, och release-bygget blir osignerat i stället för att
+    // krascha konfigurationsfasen. Debug-flödet och CI:s assembleDebug rörs
+    // inte.
+    signingConfigs {
+        val releaseStoreFile = localProperties.getProperty("RELEASE_STORE_FILE")
+        if (releaseStoreFile != null) {
+            create("release") {
+                storeFile = file(releaseStoreFile)
+                storePassword = localProperties.getProperty("RELEASE_STORE_PASSWORD")
+                keyAlias = localProperties.getProperty("RELEASE_KEY_ALIAS")
+                keyPassword = localProperties.getProperty("RELEASE_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 
