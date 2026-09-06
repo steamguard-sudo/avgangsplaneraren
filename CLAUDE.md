@@ -73,6 +73,35 @@ Android Studio påverkas inte av PATH-`java` — den använder sin buntade JBR
   av JDK 21 om ingen hittas (på CI förses den av `setup-java`, se nedan).
   Bytekodnivån är fortfarande 17 (`compileOptions` / `kotlinOptions`).
 
+## Backend (`backend/`)
+
+Litet Node/Express-backend (Render, `render.yaml`, `rootDir: backend`,
+`autoDeploy: true`) som proxar/cachar Google Routes + Places, samt slår mot
+Overpass (OSM) för `/overnight` och `/charging`. Cache i SQLite via
+`better-sqlite3` (`cache.js`).
+
+- **Ingen testharness** — `package.json` har bara `start`. Verifiera
+  ändringar med `node --check backend/server.js`. `better-sqlite3` är en
+  native modul; `npm install` i `backend/` kräver byggkedja (särskilt på
+  ny Node-major), så den körs sällan lokalt här.
+- **Overpass-robusthet (fix E):** `runOverpassQuery()` kör
+  `OVERPASS_ENDPOINTS` (4 speglar: overpass-api.de, kumi.systems,
+  private.coffee, osm.ch) sekventiellt under en **delad väggklockebudget**
+  `OVERPASS_TOTAL_BUDGET_MS` (default 45000). Varje spegel får
+  `OVERPASS_ATTEMPT_TIMEOUT_MS` (default 20000) eller resten av budgeten,
+  via `AbortController`. Budgeten **måste** hållas under appens OkHttp-
+  timeouter i `BackendHttp.kt` (`readTimeout` 60 s / `callTimeout` 75 s),
+  annars ger appen upp först. Inget eget omförsök per spegel — de fyra
+  speglarna *är* retryn. User-Agent byggs från `OVERPASS_CONTACT`
+  (default repo-URL; sätts i `render.yaml` / `.env.example`).
+- **Negativ-cache (fix F):** när alla speglar dör skriver `/overnight` och
+  `/charging` en `:neg`-post (`NEGATIVE_CACHE_TTL_MS`, 10 min). Nästa anrop
+  för samma område inom fönstret → snabbt **502** utan upstream-anrop.
+  Medvetet 502 och inte tom 200: appen tolkar 502 som `hadFailure` och
+  visar `*_failed_all/partial`; ett tomt 200-svar hade sett ut som "inga
+  träffar". `:neg`-nyckeln är skild från den positiva cache-nyckeln, som
+  läses först.
+
 ## CI (GitHub Actions)
 
 `.github/workflows/android.yml` kör på **push och PR mot `main`**:
@@ -105,3 +134,8 @@ Status/loggar: `https://github.com/steamguard-sudo/avgangsplaneraren/actions`.
   testDebugUnitTest` 11/11 grönt (nytt test `brytpunkt placeras efter faktisk
   baglangd, inte efter punktindex`), `assembleDebug` OK, CI grön på `main`
   (commit `97781cd`), 2026-09-06.
+- Fix E + F (backend Overpass-robusthet + negativ-cache, commits `0090d82`
+  / `14fd592`) — `node --check backend/server.js` OK. Ingen körande
+  backend-test (ingen harness, native deps ej installerade); logiken
+  granskad mot `cache.js`-kontraktet. Skarp verifiering sker vid nästa
+  Render-deploy. 2026-09-06.
