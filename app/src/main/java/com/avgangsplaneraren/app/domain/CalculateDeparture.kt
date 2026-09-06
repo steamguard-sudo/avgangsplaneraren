@@ -57,7 +57,8 @@ class CalculateDeparture(
             driveMinutes = route.driveMinutes,
             restMinutes = restMinutes,
             restStops = restStops,
-            plannedBreaks = numBreaks
+            plannedBreaks = numBreaks,
+            isEstimatedRoute = route.isEstimated
         )
     }
 

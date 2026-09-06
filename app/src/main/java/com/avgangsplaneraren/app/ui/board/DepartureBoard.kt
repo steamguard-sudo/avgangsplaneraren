@@ -35,6 +35,26 @@ fun DepartureBoard(result: DepartureResult, premiumViewModel: PremiumViewModel) 
     ) {
         Card(shape = RoundedCornerShape(16.dp)) {
             Column(modifier = Modifier.padding(20.dp)) {
+                // Rak-linje-fallbacken slog till: rutten är en grov uppskattning.
+                // Varna tydligt högst upp, eftersom sträcka/körtid och alla
+                // utplacerade rast-/ladd-/övernattningspunkter då är opålitliga.
+                if (result.isEstimatedRoute) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp)
+                    ) {
+                        Text(
+                            stringResource(R.string.estimated_route_warning),
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
+                }
+
                 Text(stringResource(R.string.board_must_depart), style = MaterialTheme.typography.labelMedium)
                 Text(
                     result.departureTime.format(timeFormatter),

@@ -32,7 +32,8 @@ class RouteEstimator : RouteProvider {
         return RouteInfo(
             distanceKm = distanceKm,
             driveMinutes = driveMinutes,
-            polyline = interpolatedLine(from, to, steps = 12)
+            polyline = interpolatedLine(from, to, steps = 12),
+            isEstimated = true
         )
     }
 

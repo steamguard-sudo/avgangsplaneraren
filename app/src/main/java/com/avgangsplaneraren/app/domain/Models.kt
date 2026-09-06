@@ -31,11 +31,19 @@ data class TripInput(
  *   mellanpunkter). Används för att placera ut rastplatsförslag på rätt
  *   plats. Kan vara tom om ingen ruttgeometri finns tillgänglig, då faller
  *   rastplatssökningen tillbaka på enbart avstånd.
+ * @param isEstimated true om detta INTE är en riktig vägrutt utan
+ *   `RouteEstimator`:s fallback: en rak linje mellan start och mål med
+ *   schablonhastigheter, som används när det riktiga ruttanropet misslyckas.
+ *   Då är distanceKm, driveMinutes och polyline alla grova uppskattningar,
+ *   och rastplats-/ladd-/övernattningspunkter som placeras längs linjen kan
+ *   hamna en bit från den verkliga vägen. Propageras vidare till
+ *   [DepartureResult.isEstimatedRoute] så att UI:t kan varna.
  */
 data class RouteInfo(
     val distanceKm: Int,
     val driveMinutes: Double,
-    val polyline: List<Coordinates> = emptyList()
+    val polyline: List<Coordinates> = emptyList(),
+    val isEstimated: Boolean = false
 )
 
 data class RestStop(
@@ -54,6 +62,11 @@ data class RestStop(
  *   "kort resa – inga raster planerades" (0) från "raster planerades men
  *   ingen rastplats kunde hittas nära rutten" (> 0 medan [restStops] är tom),
  *   så att UI:t kan visa rätt sak i stället för att bara dölja sektionen.
+ * @param isEstimatedRoute true om [RouteInfo.isEstimated] var satt för rutten
+ *   som resultatet bygger på — dvs. den riktiga rutten kunde inte hämtas och
+ *   en rak linje användes. UI:t visar då en tydlig varning eftersom utplacerade
+ *   rast-, ladd- och övernattningspunkter kan ligga vid sidan av den verkliga
+ *   vägen och sträcka/körtid bara är ungefärliga.
  */
 data class DepartureResult(
     val departureTime: LocalDateTime,
@@ -62,5 +75,6 @@ data class DepartureResult(
     val driveMinutes: Double,
     val restMinutes: Int,
     val restStops: List<RestStop>,
-    val plannedBreaks: Int = 0
+    val plannedBreaks: Int = 0,
+    val isEstimatedRoute: Boolean = false
 )

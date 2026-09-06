@@ -45,6 +45,7 @@
     <string name="stat_distance">Sträcka</string>
     <string name="stat_drive_time">Körtid</string>
     <string name="stat_rest_stops">Rastplatser</string>
+    <string name="estimated_route_warning">Rutten kunde inte hämtas — sträcka, körtid och kartlinjen är en grov uppskattning (rak linje mellan start och mål med schablonhastigheter). Förslagen på rastplatser, laddplatser och övernattning kan därför hamna en bit från den verkliga vägen.</string>
     <string name="rest_stops_title">Rastplatser på vägen</string>
     <string name="rest_stops_empty">Ingen rastplats hittades nära de planerade rastpunkterna. Trafikverket har bara ca 270 officiella rastplatser i landet, så i glesare trakter kan närmaste ligga längre bort än sökningen når. Om rutten inte kunde hämtas användes dessutom en grov rak linje, vilket kan lägga rastpunkterna vid sidan av vägen.</string>
     <string name="rest_stop_distance">Ca %1$d km in på resan</string>

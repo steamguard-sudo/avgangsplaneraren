@@ -45,6 +45,7 @@
     <string name="stat_distance">Distance</string>
     <string name="stat_drive_time">Drive time</string>
     <string name="stat_rest_stops">Rest stops</string>
+    <string name="estimated_route_warning">The route could not be fetched — distance, drive time and the map line are a rough estimate (a straight line between start and destination using ballpark speeds). Rest stop, charging and overnight suggestions may therefore end up some way off the actual road.</string>
     <string name="rest_stops_title">Rest stops along the way</string>
     <string name="rest_stops_empty">No rest stop was found near the planned break points. The Swedish Transport Administration only has about 270 official rest stops nationwide, so in sparser areas the nearest one can be farther away than the search reaches. If the route could not be fetched, a rough straight line was used instead, which can place the break points off to the side of the road.</string>
     <string name="rest_stop_distance">Approx. %1$d km into the trip</string>
