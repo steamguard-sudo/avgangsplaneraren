@@ -72,6 +72,10 @@ Android Studio påverkas inte av PATH-`java` — den använder sin buntade JBR
   Foojay-resolvern i `settings.gradle.kts` som skyddsnät för auto-nedladdning
   av JDK 21 om ingen hittas (på CI förses den av `setup-java`, se nedan).
   Bytekodnivån är fortfarande 17 (`compileOptions` / `kotlinOptions`).
+- **Radslut:** `.gitattributes` har `* text=auto eol=lf`, så all text checkas
+  ut med LF oberoende av lokal `core.autocrlf` (`*.bat` behåller crlf). Editor-
+  verktyg som skriver LF ska alltså inte längre ge "LF will be replaced by
+  CRLF"-varningar vid commit.
 
 ## Backend (`backend/`)
 
@@ -81,9 +85,10 @@ Overpass (OSM) för `/overnight` och `/charging`. Cache i SQLite via
 `better-sqlite3` (`cache.js`).
 
 - **Ingen testharness** — `package.json` har bara `start`. Verifiera
-  ändringar med `node --check backend/server.js`. `better-sqlite3` är en
-  native modul; `npm install` i `backend/` kräver byggkedja (särskilt på
-  ny Node-major), så den körs sällan lokalt här.
+  ändringar med `node --check backend/server.js` (CI:s `backend`-jobb kör
+  samma sak, se nedan). `better-sqlite3` är en native modul; `npm install`
+  i `backend/` kräver byggkedja (särskilt på ny Node-major), så den körs
+  sällan lokalt här.
 - **Overpass-robusthet (fix E):** `runOverpassQuery()` kör
   `OVERPASS_ENDPOINTS` (4 speglar: overpass-api.de, kumi.systems,
   private.coffee, osm.ch) sekventiellt under en **delad väggklockebudget**
@@ -104,7 +109,13 @@ Overpass (OSM) för `/overnight` och `/charging`. Cache i SQLite via
 
 ## CI (GitHub Actions)
 
-`.github/workflows/android.yml` kör på **push och PR mot `main`**:
+`.github/workflows/android.yml` kör på **push och PR mot `main`**, med
+`paths-ignore: ['**.md']` — rena dokändringar kör inte workflowen alls (en
+push som rör *både* `.md` och kod kör den ändå). `paths-ignore` är på
+workflow-nivå, så en backend-only-push kör fortfarande `build`-jobbet.
+Två jobb:
+
+**`build`** (Android, `ubuntu-latest`):
 
 1. `actions/setup-java@v4` med Temurin **JDK 21** (kör Gradle-daemonen — se
    JDK 26-fällan ovan; matchar även `jvmToolchain(21)`).
@@ -114,8 +125,13 @@ Overpass (OSM) för `/overnight` och `/charging`. Cache i SQLite via
 5. Laddar upp `app-debug.apk` som artefakt (`app-debug`), och — bara vid fel —
    testrapporten under `app/build/reports/tests/testDebugUnitTest`.
 
-Runnern är `ubuntu-latest`, så `org.gradle.java.home` / JBR-sökvägarna ovan
-gäller bara lokalt; på CI räcker `setup-java`. Bygget behöver ingen
+**`backend`** (`ubuntu-latest`): `actions/setup-node@v4` med **Node 22**
+(matchar prod: `render.yaml` / `backend/.node-version`) →
+`node --check backend/server.js` + `cache.js`. Fångar syntaxfel; `backend/`
+har ingen riktig testharness.
+
+`build`-runnern är `ubuntu-latest`, så `org.gradle.java.home` / JBR-sökvägarna
+ovan gäller bara lokalt; på CI räcker `setup-java`. Bygget behöver ingen
 `MAPS_API_KEY` — `manifestPlaceholders` defaultar till tom sträng när
 `local.properties` saknas.
 
@@ -139,3 +155,9 @@ Status/loggar: `https://github.com/steamguard-sudo/avgangsplaneraren/actions`.
   backend-test (ingen harness, native deps ej installerade); logiken
   granskad mot `cache.js`-kontraktet. Skarp verifiering sker vid nästa
   Render-deploy. 2026-09-06.
+- Städ 1–3 (commits `0dc365a` / `65fbdc6` / `1056d25`): `.gitattributes`
+  `eol=lf` (`git add --renormalize .` gav noll filändringar — blobbarna var
+  redan LF); raderat döda `res/values/values-{en,de}/strings.xml`
+  (felnästlade, ignorerade av aapt); CI fick `paths-ignore: ['**.md']` +
+  nytt `backend`-jobb. Båda CI-jobben (`build` + `backend`) gröna på `main`
+  (commit `1056d25`), 2026-09-06.
