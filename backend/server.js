@@ -45,6 +45,11 @@ const CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 dagar — vägar ändras s�
 const PLACES_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 90; // 90 dagar — adresser/orter ändras nästan aldrig
 const OVERNIGHT_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 14; // 14 dagar — OSM-data uppdateras oftare av communityn
 const NOBIL_CACHE_TTL_MS = 1000 * 60 * 60 * 24; // 24 timmar — NOBIL anger att deras data uppdateras på timnivå
+// Negativ-cache: hur länge ett "alla Overpass-speglar dog"-utfall får kortsluta
+// nya anrop för samma område till ett snabbt 502, i stället för att varje
+// ruttpunkt i varje ompanering (findOvernight/ChargingStationsAlongRoute kör
+// dem parallellt) försöker mot alla fyra speglarna igen.
+const NEGATIVE_CACHE_TTL_MS = 1000 * 60 * 10; // 10 minuter
 
 // --- Overpass-robusthet (se runOverpassQuery / postOverpassQuery nedan) ---
 // Hård timeout per enskild spegel, via AbortController.
@@ -189,18 +194,31 @@ app.get("/overnight", async (req, res) => {
   if (cached) {
     return res.json({ ...cached, cached: true });
   }
+  // Negativ-cache: om alla Overpass-speglar nyligen (inom NEGATIVE_CACHE_TTL_MS)
+  // dog för det här området, svara 502 direkt utan att hamra speglarna igen.
+  // Appen (findOvernightSpotsAlongRoute) tolkar 502 som hadFailure=true och
+  // visar felstatus — samma utfall som ett riktigt misslyckat anrop, till
+  // skillnad från ett tomt 200-svar som hade sett ut som "inga träffar".
+  // Egen `:neg`-nyckel så en gammal negativ post aldrig blockerar en riktig
+  // positiv träff (den läses ovan, före den här) och tvärtom.
+  const negativeHit = cache.get(`${key}:neg`, NEGATIVE_CACHE_TTL_MS);
+  if (negativeHit) {
+    return res.status(502).json({ error: negativeHit.error, negativeCached: true });
+  }
 
   try {
     const result = await fetchOvernightFromOverpass(lat, lon, radiusKm, types);
     cache.set(key, result);
     res.json({ ...result, cached: false });
   } catch (err) {
+    const message = "Kunde inte hämta övernattningsplatser just nu";
     console.error(
       "Fel vid anrop mot Overpass API (alla speglar misslyckades):",
       err.message,
       err.cause ? `(orsak: ${err.cause})` : ""
     );
-    res.status(502).json({ error: "Kunde inte hämta övernattningsplatser just nu" });
+    cache.set(`${key}:neg`, { error: message });
+    res.status(502).json({ error: message });
   }
 });
 app.get("/charging", async (req, res) => {
@@ -217,18 +235,25 @@ app.get("/charging", async (req, res) => {
   if (cached) {
     return res.json({ ...cached, cached: true });
   }
+  // Negativ-cache, se /overnight ovan för resonemanget.
+  const negativeHit = cache.get(`${key}:neg`, NEGATIVE_CACHE_TTL_MS);
+  if (negativeHit) {
+    return res.status(502).json({ error: negativeHit.error, negativeCached: true });
+  }
 
   try {
     const result = await fetchChargingStationsFromOverpass(lat, lon, radiusKm);
     cache.set(key, result);
     res.json({ ...result, cached: false });
   } catch (err) {
+    const message = "Kunde inte hämta laddplatser just nu";
     console.error(
       "Fel vid anrop mot Overpass API (laddplatser, alla speglar misslyckades):",
       err.message,
       err.cause ? `(orsak: ${err.cause})` : ""
     );
-    res.status(502).json({ error: "Kunde inte hämta laddplatser just nu" });
+    cache.set(`${key}:neg`, { error: message });
+    res.status(502).json({ error: message });
   }
 });
 
