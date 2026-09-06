@@ -3,8 +3,13 @@ name: Android CI
 on:
   push:
     branches: [main]
+    # Rena dokändringar behöver inte köra hela Android-bygget. Lägg till fler
+    # mönster här (t.ex. LICENSE) vid behov. OBS: en push som rör BÅDE en .md
+    # och kod kör ändå workflowen.
+    paths-ignore: ['**.md']
   pull_request:
     branches: [main]
+    paths-ignore: ['**.md']
 
 jobs:
   build:
@@ -45,3 +50,23 @@ jobs:
           name: test-report
           path: app/build/reports/tests/testDebugUnitTest
           if-no-files-found: ignore
+
+  # Litet snabbjobb för backend/ (Node/Express). Ingen testharness där — det
+  # här fångar åtminstone syntaxfel. Node 22 matchar prod (render.yaml
+  # NODE_VERSION / backend/.node-version).
+  backend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Syntax-check backend
+        run: |
+          node --check backend/server.js
+          node --check backend/cache.js
