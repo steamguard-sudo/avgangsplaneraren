@@ -137,6 +137,41 @@ ovan gäller bara lokalt; på CI räcker `setup-java`. Bygget behöver ingen
 
 Status/loggar: `https://github.com/steamguard-sudo/avgangsplaneraren/actions`.
 
+## Release-signering
+
+Release-bygget signeras med en keystore som ligger **utanför repot**:
+
+    D:\Nycklar\avgangsplaneraren\avgangsplaneraren-release.keystore
+
+- Alias `avgangsplaneraren`, RSA 2048, 10 000 dagars giltighet.
+- Cert-fingeravtryck (SHA-256, ofarligt att dela — behövs i Play Console):
+  `49:1F:E3:90:8C:4F:9B:10:A8:D4:F3:BA:88:85:FD:41:9F:C9:E8:91:65:3F:A3:D6:6E:BA:E2:45:43:24:56:2B`
+- **Keystoren och lösenorden får aldrig committas eller skrivas ut.** Tappas
+  keystoren går appen inte att uppdatera på Play utan en nyckelåterställning.
+  Ta en backup av filen på ett säkert ställe.
+
+`app/build.gradle.kts` läser fyra värden ur `local.properties` (gitignorad,
+samma mönster som `MAPS_API_KEY`):
+
+    RELEASE_STORE_FILE=D:/Nycklar/avgangsplaneraren/avgangsplaneraren-release.keystore
+    RELEASE_STORE_PASSWORD=…
+    RELEASE_KEY_ALIAS=avgangsplaneraren
+    RELEASE_KEY_PASSWORD=…
+
+`RELEASE_STORE_FILE` **måste ha forward slashes** (`.properties` tolkar `\`
+som escape). `signingConfigs["release"]` skapas bara om `RELEASE_STORE_FILE`
+finns — saknas den (CI, annan maskin) blir release-bygget osignerat i stället
+för att konfigfasen kraschar, så `assembleDebug` / CI påverkas inte.
+
+Bygg AAB:
+
+    ./gradlew bundleRelease
+    # -> app/build/outputs/bundle/release/app-release.aab
+
+OBS: appen riktar sig fortfarande mot **API 34**. Google Play kräver API 36
+(Android 16) för publicering sedan 2026-08-31 — det kräver AGP 8.9+ / Gradle
+8.11+ (se versionsnoterna ovan) och är inte gjort än.
+
 ## Verifierat
 
 - `./gradlew clean :app:assembleDebug :app:testDebugUnitTest` med JBR 21 →
@@ -161,3 +196,7 @@ Status/loggar: `https://github.com/steamguard-sudo/avgangsplaneraren/actions`.
   (felnästlade, ignorerade av aapt); CI fick `paths-ignore: ['**.md']` +
   nytt `backend`-jobb. Båda CI-jobben (`build` + `backend`) gröna på `main`
   (commit `1056d25`), 2026-09-06.
+- Release-signering (commit `bacb552`): `./gradlew bundleRelease` → BUILD
+  SUCCESSFUL, `app-release.aab` signerad (`jarsigner -verify` → "jar
+  verified"). `git status` visade bara `app/build.gradle.kts` — ingen
+  `local.properties`/keystore. Båda CI-jobben gröna på `main`. 2026-09-06.
