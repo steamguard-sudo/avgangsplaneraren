@@ -1,7 +1,14 @@
 #
 # https://help.github.com/articles/dealing-with-line-endings/
 #
-# Linux start script should use lf
+
+# Normalisera alla textfiler till LF i repot OCH i arbetsträdet, oberoende
+# av den lokala core.autocrlf-inställningen. Utan detta skrev editor-verktyg
+# LF medan Windows-utcheckningen ville ha CRLF, vilket gav "LF will be
+# replaced by CRLF"-varningar vid varje commit och blandade radslut.
+*                   text=auto eol=lf
+
+# Linux start script should use lf (redundant med raden ovan, men explicit)
 /gradlew            text eol=lf
 
 # These are Windows script files and should use crlf
