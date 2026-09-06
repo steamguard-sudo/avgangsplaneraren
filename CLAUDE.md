@@ -145,10 +145,16 @@ Release-bygget signeras med en keystore som ligger **utanför repot**:
 
 - Alias `avgangsplaneraren`, RSA 2048, 10 000 dagars giltighet.
 - Cert-fingeravtryck (SHA-256, ofarligt att dela — behövs i Play Console):
-  `49:1F:E3:90:8C:4F:9B:10:A8:D4:F3:BA:88:85:FD:41:9F:C9:E8:91:65:3F:A3:D6:6E:BA:E2:45:43:24:56:2B`
+  `7C:60:46:28:C2:F6:54:8F:4B:FC:7E:B7:69:25:DF:36:D3:CE:EA:8E:08:A2:79:B9:08:3C:F4:35:7E:A7:F9:DC`
 - **Keystoren och lösenorden får aldrig committas eller skrivas ut.** Tappas
   keystoren går appen inte att uppdatera på Play utan en nyckelåterställning.
   Ta en backup av filen på ett säkert ställe.
+- **Nyckel roterad 2026-09-06** (gamla lösenord syntes i en skärmdump). Den
+  gamla keystoren ligger arkiverad i
+  `D:\Nycklar\avgangsplaneraren\compromised-20260906\` och ska inte användas.
+  Appen är inte publicerad än, så rotationen är helt riskfri. PKCS12 använder
+  **samma lösenord för lager och nyckel** — `RELEASE_STORE_PASSWORD` och
+  `RELEASE_KEY_PASSWORD` i `local.properties` måste vara identiska.
 
 `app/build.gradle.kts` läser fyra värden ur `local.properties` (gitignorad,
 samma mönster som `MAPS_API_KEY`):
