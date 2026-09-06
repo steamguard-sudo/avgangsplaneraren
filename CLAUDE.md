@@ -69,8 +69,28 @@ Android Studio påverkas inte av PATH-`java` — den använder sin buntade JBR
   "$GRADLE" assembleDebug --console=plain
   ```
 - Java-toolchain: `kotlin { jvmToolchain(21) }` i `app/build.gradle.kts`, med
-  Foojay-resolvern i `settings.gradle.kts` för auto-nedladdning av JDK 21 på
-  CI. Bytekodnivån är fortfarande 17 (`compileOptions` / `kotlinOptions`).
+  Foojay-resolvern i `settings.gradle.kts` som skyddsnät för auto-nedladdning
+  av JDK 21 om ingen hittas (på CI förses den av `setup-java`, se nedan).
+  Bytekodnivån är fortfarande 17 (`compileOptions` / `kotlinOptions`).
+
+## CI (GitHub Actions)
+
+`.github/workflows/android.yml` kör på **push och PR mot `main`**:
+
+1. `actions/setup-java@v4` med Temurin **JDK 21** (kör Gradle-daemonen — se
+   JDK 26-fällan ovan; matchar även `jvmToolchain(21)`).
+2. `gradle/actions/setup-gradle@v4` för dependency-/build-cache mellan körningar.
+3. `./gradlew testDebugUnitTest --console=plain --stacktrace`
+4. `./gradlew assembleDebug --console=plain --stacktrace`
+5. Laddar upp `app-debug.apk` som artefakt (`app-debug`), och — bara vid fel —
+   testrapporten under `app/build/reports/tests/testDebugUnitTest`.
+
+Runnern är `ubuntu-latest`, så `org.gradle.java.home` / JBR-sökvägarna ovan
+gäller bara lokalt; på CI räcker `setup-java`. Bygget behöver ingen
+`MAPS_API_KEY` — `manifestPlaceholders` defaultar till tom sträng när
+`local.properties` saknas.
+
+Status/loggar: `https://github.com/steamguard-sudo/avgangsplaneraren/actions`.
 
 ## Verifierat
 
@@ -79,3 +99,5 @@ Android Studio påverkas inte av PATH-`java` — den använder sin buntade JBR
 - `./gradlew testDebugUnitTest` med PATH-`java` = JDK 26 och utan `JAVA_HOME`
   (dvs. enbart via `org.gradle.java.home` i `~/.gradle/gradle.properties`) →
   BUILD SUCCESSFUL (2026-09-05).
+- GitHub Actions-workflowen (`android.yml`) grön på `main` — första körningen
+  samt fix G (`testDebugUnitTest` + `assembleDebug`), 2026-09-06.
