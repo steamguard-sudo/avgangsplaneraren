@@ -211,3 +211,8 @@ fokuserad session. **Läge just nu: Fas 0 ej påbörjad.**
   SUCCESSFUL, `app-release.aab` signerad (`jarsigner -verify` → "jar
   verified"). `git status` visade bara `app/build.gradle.kts` — ingen
   `local.properties`/keystore. Båda CI-jobben gröna på `main`. 2026-09-06.
+- Kartfix "pinna kartan utanför scrollytan" (commit `0dfef1e`):
+  `assembleDebug` + `testDebugUnitTest` gröna lokalt och i CI, och
+  **visuellt verifierad på Pixel 11 Pro (Android 17)** — kartan ligger fast
+  högst upp med alla markörer intakta i alla scroll-lägen medan resten av
+  innehållet scrollar under den. 2026-09-08.
