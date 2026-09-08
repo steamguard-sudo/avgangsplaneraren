@@ -178,6 +178,11 @@ OBS: appen riktar sig fortfarande mot **API 34**. Google Play kräver API 36
 (Android 16) för publicering sedan 2026-08-31 — det kräver AGP 8.9+ / Gradle
 8.11+ (se versionsnoterna ovan) och är inte gjort än.
 
+`uppgradering-agp-8.9-gradle-8.11.md` är den detaljerade planen för den
+uppgraderingen (AGP 8.5→8.9.1, Gradle 8.7→8.11.1, sedan compileSdk/target 36),
+medvetet parkerad som en egen fokuserad session. **Läge just nu: Fas 0 ej
+påbörjad.**
+
 ## Verifierat
 
 - `./gradlew clean :app:assembleDebug :app:testDebugUnitTest` med JBR 21 →
