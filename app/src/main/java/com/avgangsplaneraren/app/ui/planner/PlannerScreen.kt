@@ -163,355 +163,13 @@ fun PlannerScreen() {
     val canCalculate = fromCoord != null && toCoord != null && !isSeeding && !isCalculating
     val numSegments = ((result?.distanceKm ?: 0) / 200.0).roundToInt().coerceIn(1, 6)
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        LanguageSelector()
-
-        Text(stringResource(R.string.planner_title), style = MaterialTheme.typography.headlineSmall)
-        Text(
-            stringResource(R.string.planner_subtitle),
-            style = MaterialTheme.typography.bodyMedium
-        )
-
-        SavedTripsSection(
-            trips = savedTrips,
-            onTripSelected = { trip ->
-                fromName = trip.fromPlace
-                fromCoord = trip.fromCoordinates
-                toName = trip.toPlace
-                toCoord = trip.toCoordinates
-                bufferMinutes = trip.bufferMinutes
-                minutesPerBreak = trip.minutesPerBreak
-                onlyAmenities = trip.onlyStopsWithTableAndBench
-                showOvernightSpots = trip.showOvernightSpots
-                includeCaravanSites = trip.includeCaravanSites
-                includeCampSites = trip.includeCampSites
-                campingStopHours = trip.campingStopHours
-                campingStopExtraMinutes = trip.campingStopExtraMinutes
-                notifyEnabled = trip.notifyEnabled
-                notifyMinutesBefore = trip.notifyMinutesBefore
-                loadTripCounter++
-            },
-            onTripDeleted = { trip ->
-                coroutineScope.launch { savedTripRepository.delete(trip) }
-            }
-        )
-
-        key(loadTripCounter) {
-            PlaceAutocompleteField(
-                label = stringResource(R.string.label_from),
-                placeProvider = placeProvider,
-                initialValue = fromName.orEmpty(),
-                onPlaceSelected = { name, coordinates ->
-                    fromName = name
-                    fromCoord = coordinates
-                },
-                onCleared = {
-                    fromName = null
-                    fromCoord = null
-                }
-            )
-
-            PlaceAutocompleteField(
-                label = stringResource(R.string.label_to),
-                placeProvider = placeProvider,
-                initialValue = toName.orEmpty(),
-                onPlaceSelected = { name, coordinates ->
-                    toName = name
-                    toCoord = coordinates
-                },
-                onCleared = {
-                    toName = null
-                    toCoord = null
-                }
-            )
-        }
-
-        ArrivalDateTimePicker(value = arrival, onValueChange = { arrival = it })
-
-        key(loadTripCounter) {
-            NumberField(
-                value = bufferMinutes,
-                onValueChange = { bufferMinutes = it },
-                label = stringResource(R.string.label_buffer_minutes)
-            )
-
-            NumberField(
-                value = minutesPerBreak,
-                onValueChange = { minutesPerBreak = it },
-                label = stringResource(R.string.label_minutes_per_break),
-                supportingText = stringResource(R.string.hint_minutes_per_break)
-            )
-        }
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = onlyAmenities, onCheckedChange = { onlyAmenities = it })
-            Text(stringResource(R.string.checkbox_only_amenities))
-        }
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = showOvernightSpots, onCheckedChange = { showOvernightSpots = it })
-            Text(stringResource(R.string.checkbox_show_overnight))
-        }
-
-        if (showOvernightSpots) {
-            Column(modifier = Modifier.padding(start = 40.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = includeCaravanSites, onCheckedChange = { includeCaravanSites = it })
-                    Text(stringResource(R.string.checkbox_caravan_sites), style = MaterialTheme.typography.bodySmall)
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = includeCampSites, onCheckedChange = { includeCampSites = it })
-                    Text(stringResource(R.string.checkbox_camp_sites), style = MaterialTheme.typography.bodySmall)
-                }
-                DurationPicker(
-                    label = stringResource(R.string.label_camping_stop_duration),
-                    hours = campingStopHours,
-                    minutes = campingStopExtraMinutes,
-                    onDurationChange = { h, m ->
-                        campingStopHours = h
-                        campingStopExtraMinutes = m
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Text(
-                    stringResource(R.string.hint_camping_stop_duration),
-                    style = MaterialTheme.typography.labelSmall
-                )
-            }
-        }
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = showChargingStations, onCheckedChange = { showChargingStations = it })
-            Text(stringResource(R.string.checkbox_show_charging))
-        }
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(
-                checked = notifyEnabled,
-                onCheckedChange = { checked ->
-                    notifyEnabled = checked
-                    if (checked &&
-                        !notificationPermissionGranted &&
-                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-                    ) {
-                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                    }
-                    if (checked) {
-                        canScheduleExactAlarms = NotificationScheduler.canScheduleExactAlarms(context)
-                    }
-                }
-            )
-            Text(stringResource(R.string.checkbox_notify_before))
-        }
-
-        if (notifyEnabled) {
-            Column(modifier = Modifier.padding(start = 40.dp)) {
-                key(loadTripCounter) {
-                    NumberField(
-                        value = notifyMinutesBefore,
-                        onValueChange = { notifyMinutesBefore = it },
-                        label = stringResource(R.string.label_notify_minutes)
-                    )
-                }
-
-                if (!notificationPermissionGranted) {
-                    Text(
-                        stringResource(R.string.notification_permission_rationale),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                    TextButton(onClick = {
-                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                    }) {
-                        Text(stringResource(R.string.button_grant_notification_permission))
-                    }
-                }
-
-                if (!canScheduleExactAlarms) {
-                    TextButton(onClick = {
-                        context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
-                    }) {
-                        Text(stringResource(R.string.button_enable_exact_alarms))
-                    }
-                }
-
-                notificationScheduledMessage?.let {
-                    Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                }
-            }
-        }
-
-        OutlinedButton(
-            enabled = fromCoord != null && toCoord != null,
-            onClick = { showSaveTripDialog = true },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(stringResource(R.string.button_save_trip))
-        }
-
-        if (showSaveTripDialog) {
-            SaveTripDialog(
-                defaultLabel = stringResource(
-                    R.string.default_trip_label_format,
-                    fromName.orEmpty(),
-                    toName.orEmpty()
-                ),
-                onConfirm = { label ->
-                    val from = fromCoord
-                    val to = toCoord
-                    if (from != null && to != null) {
-                        coroutineScope.launch {
-                            savedTripRepository.save(
-                                SavedTrip(
-                                    label = label,
-                                    fromPlace = fromName.orEmpty(),
-                                    fromCoordinates = from,
-                                    toPlace = toName.orEmpty(),
-                                    toCoordinates = to,
-                                    bufferMinutes = bufferMinutes,
-                                    minutesPerBreak = minutesPerBreak,
-                                    onlyStopsWithTableAndBench = onlyAmenities,
-                                    showOvernightSpots = showOvernightSpots,
-                                    includeCaravanSites = includeCaravanSites,
-                                    includeCampSites = includeCampSites,
-                                    campingStopHours = campingStopHours,
-                                    campingStopExtraMinutes = campingStopExtraMinutes,
-                                    notifyEnabled = notifyEnabled,
-                                    notifyMinutesBefore = notifyMinutesBefore
-                                )
-                            )
-                        }
-                    }
-                    showSaveTripDialog = false
-                },
-                onDismiss = { showSaveTripDialog = false }
-            )
-        }
-
-        Button(
-            enabled = canCalculate,
-            onClick = {
-                val from = fromCoord ?: return@Button
-                val to = toCoord ?: return@Button
-                errorMessage = null
-                isCalculating = true
-                overnightSpots = emptyList()
-                overnightSearchDone = false
-                overnightSearchFailed = false
-                chargingStations = emptyList()
-                chargingSearchDone = false
-                chargingSearchFailed = false
-                notificationScheduledMessage = null
-                selectedSegment = 1
-                coroutineScope.launch {
-                    try {
-                        val route = routeProvider.getRoute(from, to)
-                        lastRoutePolyline = route.polyline
-                        lastRoute = route
-
-                        val campingStopMinutes = if (showOvernightSpots) {
-                            campingStopHours * 60 + campingStopExtraMinutes
-                        } else {
-                            0
-                        }
-                        val trip = TripInput(
-                            fromPlace = fromName.orEmpty(),
-                            toPlace = toName.orEmpty(),
-                            desiredArrival = arrival,
-                            bufferMinutes = bufferMinutes,
-                            onlyStopsWithTableAndBench = onlyAmenities,
-                            minutesPerBreak = minutesPerBreak,
-                            campingStopMinutes = campingStopMinutes
-                        )
-                        val departureResult = calculator.calculate(trip, route)
-                        result = departureResult
-
-                        if (notifyEnabled) {
-                            val triggerTime = departureResult.departureTime.minusMinutes(notifyMinutesBefore.toLong())
-                            val triggerAtMillis = triggerTime
-                                .atZone(ZoneId.systemDefault())
-                                .toInstant()
-                                .toEpochMilli()
-
-                            if (triggerAtMillis > System.currentTimeMillis()) {
-                                NotificationScheduler.ensureChannel(context)
-                                val scheduled = NotificationScheduler.schedule(
-                                    context = context,
-                                    triggerAtMillis = triggerAtMillis,
-                                    fromPlace = fromName.orEmpty(),
-                                    toPlace = toName.orEmpty()
-                                )
-                                canScheduleExactAlarms = scheduled || NotificationScheduler.canScheduleExactAlarms(context)
-                                notificationScheduledMessage = if (scheduled) {
-                                    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
-                                    context.withLocale(AppLanguageState.current.value).getString(
-                                        R.string.notification_scheduled_confirmation,
-                                        triggerTime.format(timeFormatter)
-                                    )
-                                } else {
-                                    null
-                                }
-                            }
-                        }
-
-                        if (showOvernightSpots) {
-                            searchStatusMessage = searchingOvernightText
-                            val types = buildSet {
-                                if (includeCaravanSites) add(OvernightSpotType.CARAVAN_SITE)
-                                if (includeCampSites) add(OvernightSpotType.CAMP_SITE)
-                            }
-                            val outcome = findOvernightSpotsAlongRoute(overnightProvider, route, types)
-                            overnightSpots = outcome.spots
-                            overnightSearchFailed = outcome.hadFailure
-                            overnightSearchDone = true
-                        }
-
-                        if (showChargingStations) {
-                            searchStatusMessage = searchingChargingText
-                            val outcome = findChargingStationsAlongRoute(chargingProvider, route)
-                            chargingStations = outcome.stations
-                            chargingSearchFailed = outcome.hadFailure
-                            chargingSearchDone = true
-                        }
-
-                        searchStatusMessage = null
-                    } catch (e: Exception) {
-                        errorMessage = context.withLocale(AppLanguageState.current.value)
-                            .getString(R.string.error_calculate_failed, e.message)
-                    } finally {
-                        isCalculating = false
-                        searchStatusMessage = null
-                    }
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                when {
-                    isSeeding -> stringResource(R.string.button_loading_data)
-                    isCalculating -> stringResource(R.string.button_calculating)
-                    fromCoord == null || toCoord == null -> stringResource(R.string.button_choose_places)
-                    else -> stringResource(R.string.button_calculate)
-                }
-            )
-        }
-
-        errorMessage?.let {
-            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-        }
-
-        searchStatusMessage?.let {
-            BlinkingStatusText(it)
-        }
-
+    // Alt A mot "kartan tappar markörer vid scroll": Google Maps klassiska
+    // MapView (i RouteMapView) renderar visuellt fel när den scrollas ut ur
+    // och tillbaka in i synfältet. Den ligger därför i en yttre, icke-
+    // scrollande Column och pinnas högst upp; allt annat innehåll ligger i den
+    // inre Column:en med verticalScroll.
+    Column(modifier = Modifier.fillMaxSize()) {
         result?.let { departureResult ->
-            DepartureBoard(departureResult, premiumViewModel)
             RouteMapView(
                 routePoints = lastRoutePolyline,
                 fromName = fromName.orEmpty(),
@@ -519,87 +177,439 @@ fun PlannerScreen() {
                 restStops = departureResult.restStops,
                 overnightSpots = overnightSpots,
                 chargingStations = chargingStations,
-                modifier = Modifier.padding(top = 16.dp)
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
             )
         }
 
-        if (result != null && numSegments > 1 && (showChargingStations || showOvernightSpots)) {
-            val totalDistance = result?.distanceKm ?: 0
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                for (n in 1..numSegments) {
-                    val startKm = ((n - 1).toDouble() * totalDistance / numSegments).roundToInt()
-                    val endKm = (n.toDouble() * totalDistance / numSegments).roundToInt()
-                    FilterChip(
-                        selected = selectedSegment == n,
-                        onClick = {
-                            selectedSegment = n
-                            val route = lastRoute
-                            if (route != null) {
-                                coroutineScope.launch {
-                                    val startFraction = (n - 1).toDouble() / numSegments
-                                    val endFraction = n.toDouble() / numSegments
-                                    val fractionRange = startFraction..endFraction
-                                    searchStatusMessage = context.withLocale(AppLanguageState.current.value)
-                                        .getString(R.string.searching_segment_format, n)
-                                    if (showChargingStations) {
-                                        val outcome = findChargingStationsAlongRoute(
-                                            chargingProvider,
-                                            route,
-                                            fractionRange = fractionRange
-                                        )
-                                        chargingStations = outcome.stations
-                                        chargingSearchFailed = outcome.hadFailure
-                                        chargingSearchDone = true
-                                    }
-                                    if (showOvernightSpots) {
-                                        val types = buildSet {
-                                            if (includeCaravanSites) add(OvernightSpotType.CARAVAN_SITE)
-                                            if (includeCampSites) add(OvernightSpotType.CAMP_SITE)
-                                        }
-                                        val outcome = findOvernightSpotsAlongRoute(
-                                            overnightProvider,
-                                            route,
-                                            types,
-                                            fractionRange = fractionRange
-                                        )
-                                        overnightSpots = outcome.spots
-                                        overnightSearchFailed = outcome.hadFailure
-                                        overnightSearchDone = true
-                                    }
-                                    searchStatusMessage = null
-                                }
-                            }
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            LanguageSelector()
+
+            Text(stringResource(R.string.planner_title), style = MaterialTheme.typography.headlineSmall)
+            Text(
+                stringResource(R.string.planner_subtitle),
+                style = MaterialTheme.typography.bodyMedium
+            )
+
+            SavedTripsSection(
+                trips = savedTrips,
+                onTripSelected = { trip ->
+                    fromName = trip.fromPlace
+                    fromCoord = trip.fromCoordinates
+                    toName = trip.toPlace
+                    toCoord = trip.toCoordinates
+                    bufferMinutes = trip.bufferMinutes
+                    minutesPerBreak = trip.minutesPerBreak
+                    onlyAmenities = trip.onlyStopsWithTableAndBench
+                    showOvernightSpots = trip.showOvernightSpots
+                    includeCaravanSites = trip.includeCaravanSites
+                    includeCampSites = trip.includeCampSites
+                    campingStopHours = trip.campingStopHours
+                    campingStopExtraMinutes = trip.campingStopExtraMinutes
+                    notifyEnabled = trip.notifyEnabled
+                    notifyMinutesBefore = trip.notifyMinutesBefore
+                    loadTripCounter++
+                },
+                onTripDeleted = { trip ->
+                    coroutineScope.launch { savedTripRepository.delete(trip) }
+                }
+            )
+
+            key(loadTripCounter) {
+                PlaceAutocompleteField(
+                    label = stringResource(R.string.label_from),
+                    placeProvider = placeProvider,
+                    initialValue = fromName.orEmpty(),
+                    onPlaceSelected = { name, coordinates ->
+                        fromName = name
+                        fromCoord = coordinates
+                    },
+                    onCleared = {
+                        fromName = null
+                        fromCoord = null
+                    }
+                )
+
+                PlaceAutocompleteField(
+                    label = stringResource(R.string.label_to),
+                    placeProvider = placeProvider,
+                    initialValue = toName.orEmpty(),
+                    onPlaceSelected = { name, coordinates ->
+                        toName = name
+                        toCoord = coordinates
+                    },
+                    onCleared = {
+                        toName = null
+                        toCoord = null
+                    }
+                )
+            }
+
+            ArrivalDateTimePicker(value = arrival, onValueChange = { arrival = it })
+
+            key(loadTripCounter) {
+                NumberField(
+                    value = bufferMinutes,
+                    onValueChange = { bufferMinutes = it },
+                    label = stringResource(R.string.label_buffer_minutes)
+                )
+
+                NumberField(
+                    value = minutesPerBreak,
+                    onValueChange = { minutesPerBreak = it },
+                    label = stringResource(R.string.label_minutes_per_break),
+                    supportingText = stringResource(R.string.hint_minutes_per_break)
+                )
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = onlyAmenities, onCheckedChange = { onlyAmenities = it })
+                Text(stringResource(R.string.checkbox_only_amenities))
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = showOvernightSpots, onCheckedChange = { showOvernightSpots = it })
+                Text(stringResource(R.string.checkbox_show_overnight))
+            }
+
+            if (showOvernightSpots) {
+                Column(modifier = Modifier.padding(start = 40.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = includeCaravanSites, onCheckedChange = { includeCaravanSites = it })
+                        Text(stringResource(R.string.checkbox_caravan_sites), style = MaterialTheme.typography.bodySmall)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = includeCampSites, onCheckedChange = { includeCampSites = it })
+                        Text(stringResource(R.string.checkbox_camp_sites), style = MaterialTheme.typography.bodySmall)
+                    }
+                    DurationPicker(
+                        label = stringResource(R.string.label_camping_stop_duration),
+                        hours = campingStopHours,
+                        minutes = campingStopExtraMinutes,
+                        onDurationChange = { h, m ->
+                            campingStopHours = h
+                            campingStopExtraMinutes = m
                         },
-                        label = {
-                            Text(stringResource(R.string.segment_label_format, n, startKm, endKm))
-                        }
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Text(
+                        stringResource(R.string.hint_camping_stop_duration),
+                        style = MaterialTheme.typography.labelSmall
                     )
                 }
             }
-        }
 
-        if (showOvernightSpots) {
-            PremiumGate(feature = PremiumFeature.OVERNIGHT_STAYS, viewModel = premiumViewModel) {
-                OvernightSpotsSection(
-                    spots = overnightSpots,
-                    searchDone = overnightSearchDone,
-                    searchFailed = overnightSearchFailed
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = showChargingStations, onCheckedChange = { showChargingStations = it })
+                Text(stringResource(R.string.checkbox_show_charging))
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                    checked = notifyEnabled,
+                    onCheckedChange = { checked ->
+                        notifyEnabled = checked
+                        if (checked &&
+                            !notificationPermissionGranted &&
+                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                        ) {
+                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                        if (checked) {
+                            canScheduleExactAlarms = NotificationScheduler.canScheduleExactAlarms(context)
+                        }
+                    }
+                )
+                Text(stringResource(R.string.checkbox_notify_before))
+            }
+
+            if (notifyEnabled) {
+                Column(modifier = Modifier.padding(start = 40.dp)) {
+                    key(loadTripCounter) {
+                        NumberField(
+                            value = notifyMinutesBefore,
+                            onValueChange = { notifyMinutesBefore = it },
+                            label = stringResource(R.string.label_notify_minutes)
+                        )
+                    }
+
+                    if (!notificationPermissionGranted) {
+                        Text(
+                            stringResource(R.string.notification_permission_rationale),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        TextButton(onClick = {
+                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        }) {
+                            Text(stringResource(R.string.button_grant_notification_permission))
+                        }
+                    }
+
+                    if (!canScheduleExactAlarms) {
+                        TextButton(onClick = {
+                            context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
+                        }) {
+                            Text(stringResource(R.string.button_enable_exact_alarms))
+                        }
+                    }
+
+                    notificationScheduledMessage?.let {
+                        Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            }
+
+            OutlinedButton(
+                enabled = fromCoord != null && toCoord != null,
+                onClick = { showSaveTripDialog = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(stringResource(R.string.button_save_trip))
+            }
+
+            if (showSaveTripDialog) {
+                SaveTripDialog(
+                    defaultLabel = stringResource(
+                        R.string.default_trip_label_format,
+                        fromName.orEmpty(),
+                        toName.orEmpty()
+                    ),
+                    onConfirm = { label ->
+                        val from = fromCoord
+                        val to = toCoord
+                        if (from != null && to != null) {
+                            coroutineScope.launch {
+                                savedTripRepository.save(
+                                    SavedTrip(
+                                        label = label,
+                                        fromPlace = fromName.orEmpty(),
+                                        fromCoordinates = from,
+                                        toPlace = toName.orEmpty(),
+                                        toCoordinates = to,
+                                        bufferMinutes = bufferMinutes,
+                                        minutesPerBreak = minutesPerBreak,
+                                        onlyStopsWithTableAndBench = onlyAmenities,
+                                        showOvernightSpots = showOvernightSpots,
+                                        includeCaravanSites = includeCaravanSites,
+                                        includeCampSites = includeCampSites,
+                                        campingStopHours = campingStopHours,
+                                        campingStopExtraMinutes = campingStopExtraMinutes,
+                                        notifyEnabled = notifyEnabled,
+                                        notifyMinutesBefore = notifyMinutesBefore
+                                    )
+                                )
+                            }
+                        }
+                        showSaveTripDialog = false
+                    },
+                    onDismiss = { showSaveTripDialog = false }
                 )
             }
-        }
 
-        if (showChargingStations) {
-            PremiumGate(feature = PremiumFeature.CHARGING_STATIONS, viewModel = premiumViewModel) {
-                ChargingStationsSection(
-                    stations = chargingStations,
-                    searchDone = chargingSearchDone,
-                    searchFailed = chargingSearchFailed
+            Button(
+                enabled = canCalculate,
+                onClick = {
+                    val from = fromCoord ?: return@Button
+                    val to = toCoord ?: return@Button
+                    errorMessage = null
+                    isCalculating = true
+                    overnightSpots = emptyList()
+                    overnightSearchDone = false
+                    overnightSearchFailed = false
+                    chargingStations = emptyList()
+                    chargingSearchDone = false
+                    chargingSearchFailed = false
+                    notificationScheduledMessage = null
+                    selectedSegment = 1
+                    coroutineScope.launch {
+                        try {
+                            val route = routeProvider.getRoute(from, to)
+                            lastRoutePolyline = route.polyline
+                            lastRoute = route
+
+                            val campingStopMinutes = if (showOvernightSpots) {
+                                campingStopHours * 60 + campingStopExtraMinutes
+                            } else {
+                                0
+                            }
+                            val trip = TripInput(
+                                fromPlace = fromName.orEmpty(),
+                                toPlace = toName.orEmpty(),
+                                desiredArrival = arrival,
+                                bufferMinutes = bufferMinutes,
+                                onlyStopsWithTableAndBench = onlyAmenities,
+                                minutesPerBreak = minutesPerBreak,
+                                campingStopMinutes = campingStopMinutes
+                            )
+                            val departureResult = calculator.calculate(trip, route)
+                            result = departureResult
+
+                            if (notifyEnabled) {
+                                val triggerTime = departureResult.departureTime.minusMinutes(notifyMinutesBefore.toLong())
+                                val triggerAtMillis = triggerTime
+                                    .atZone(ZoneId.systemDefault())
+                                    .toInstant()
+                                    .toEpochMilli()
+
+                                if (triggerAtMillis > System.currentTimeMillis()) {
+                                    NotificationScheduler.ensureChannel(context)
+                                    val scheduled = NotificationScheduler.schedule(
+                                        context = context,
+                                        triggerAtMillis = triggerAtMillis,
+                                        fromPlace = fromName.orEmpty(),
+                                        toPlace = toName.orEmpty()
+                                    )
+                                    canScheduleExactAlarms = scheduled || NotificationScheduler.canScheduleExactAlarms(context)
+                                    notificationScheduledMessage = if (scheduled) {
+                                        val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+                                        context.withLocale(AppLanguageState.current.value).getString(
+                                            R.string.notification_scheduled_confirmation,
+                                            triggerTime.format(timeFormatter)
+                                        )
+                                    } else {
+                                        null
+                                    }
+                                }
+                            }
+
+                            if (showOvernightSpots) {
+                                searchStatusMessage = searchingOvernightText
+                                val types = buildSet {
+                                    if (includeCaravanSites) add(OvernightSpotType.CARAVAN_SITE)
+                                    if (includeCampSites) add(OvernightSpotType.CAMP_SITE)
+                                }
+                                val outcome = findOvernightSpotsAlongRoute(overnightProvider, route, types)
+                                overnightSpots = outcome.spots
+                                overnightSearchFailed = outcome.hadFailure
+                                overnightSearchDone = true
+                            }
+
+                            if (showChargingStations) {
+                                searchStatusMessage = searchingChargingText
+                                val outcome = findChargingStationsAlongRoute(chargingProvider, route)
+                                chargingStations = outcome.stations
+                                chargingSearchFailed = outcome.hadFailure
+                                chargingSearchDone = true
+                            }
+
+                            searchStatusMessage = null
+                        } catch (e: Exception) {
+                            errorMessage = context.withLocale(AppLanguageState.current.value)
+                                .getString(R.string.error_calculate_failed, e.message)
+                        } finally {
+                            isCalculating = false
+                            searchStatusMessage = null
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    when {
+                        isSeeding -> stringResource(R.string.button_loading_data)
+                        isCalculating -> stringResource(R.string.button_calculating)
+                        fromCoord == null || toCoord == null -> stringResource(R.string.button_choose_places)
+                        else -> stringResource(R.string.button_calculate)
+                    }
                 )
+            }
+
+            errorMessage?.let {
+                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            }
+
+            searchStatusMessage?.let {
+                BlinkingStatusText(it)
+            }
+
+            result?.let { departureResult ->
+                DepartureBoard(departureResult, premiumViewModel)
+            }
+
+            if (result != null && numSegments > 1 && (showChargingStations || showOvernightSpots)) {
+                val totalDistance = result?.distanceKm ?: 0
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    for (n in 1..numSegments) {
+                        val startKm = ((n - 1).toDouble() * totalDistance / numSegments).roundToInt()
+                        val endKm = (n.toDouble() * totalDistance / numSegments).roundToInt()
+                        FilterChip(
+                            selected = selectedSegment == n,
+                            onClick = {
+                                selectedSegment = n
+                                val route = lastRoute
+                                if (route != null) {
+                                    coroutineScope.launch {
+                                        val startFraction = (n - 1).toDouble() / numSegments
+                                        val endFraction = n.toDouble() / numSegments
+                                        val fractionRange = startFraction..endFraction
+                                        searchStatusMessage = context.withLocale(AppLanguageState.current.value)
+                                            .getString(R.string.searching_segment_format, n)
+                                        if (showChargingStations) {
+                                            val outcome = findChargingStationsAlongRoute(
+                                                chargingProvider,
+                                                route,
+                                                fractionRange = fractionRange
+                                            )
+                                            chargingStations = outcome.stations
+                                            chargingSearchFailed = outcome.hadFailure
+                                            chargingSearchDone = true
+                                        }
+                                        if (showOvernightSpots) {
+                                            val types = buildSet {
+                                                if (includeCaravanSites) add(OvernightSpotType.CARAVAN_SITE)
+                                                if (includeCampSites) add(OvernightSpotType.CAMP_SITE)
+                                            }
+                                            val outcome = findOvernightSpotsAlongRoute(
+                                                overnightProvider,
+                                                route,
+                                                types,
+                                                fractionRange = fractionRange
+                                            )
+                                            overnightSpots = outcome.spots
+                                            overnightSearchFailed = outcome.hadFailure
+                                            overnightSearchDone = true
+                                        }
+                                        searchStatusMessage = null
+                                    }
+                                }
+                            },
+                            label = {
+                                Text(stringResource(R.string.segment_label_format, n, startKm, endKm))
+                            }
+                        )
+                    }
+                }
+            }
+
+            if (showOvernightSpots) {
+                PremiumGate(feature = PremiumFeature.OVERNIGHT_STAYS, viewModel = premiumViewModel) {
+                    OvernightSpotsSection(
+                        spots = overnightSpots,
+                        searchDone = overnightSearchDone,
+                        searchFailed = overnightSearchFailed
+                    )
+                }
+            }
+
+            if (showChargingStations) {
+                PremiumGate(feature = PremiumFeature.CHARGING_STATIONS, viewModel = premiumViewModel) {
+                    ChargingStationsSection(
+                        stations = chargingStations,
+                        searchDone = chargingSearchDone,
+                        searchFailed = chargingSearchFailed
+                    )
+                }
             }
         }
     }
